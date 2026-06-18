@@ -10,12 +10,12 @@ One command. Every agent runs in sequence — database schema, backend routes, f
 
 **Windows (PowerShell):**
 ```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/software-engineer/main/skill.md" -OutFile "$env:USERPROFILE\.claude\skills\software-engineer.md"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/MARafey/The-Software-Engineer/main/skill.md" -OutFile "$env:USERPROFILE\.claude\skills\software-engineer.md"
 ```
 
 **macOS/Linux:**
 ```bash
-mkdir -p ~/.claude/skills && curl -o ~/.claude/skills/software-engineer.md https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/software-engineer/main/skill.md
+mkdir -p ~/.claude/skills && curl -o ~/.claude/skills/software-engineer.md https://raw.githubusercontent.com/MARafey/The-Software-Engineer/main/skill.md
 ```
 
 That's it. Open Claude Code and run `/software-engineer` — it clones this repo and sets up everything automatically on first use.
@@ -39,11 +39,26 @@ That's it. Open Claude Code and run `/software-engineer` — it clones this repo
 
 Other commands:
 ```
+/software-engineer test         — run 35 health checks, verify install is working (no files modified)
 /software-engineer onboard      — force re-scan of current project (auto-runs on first use)
 /software-engineer status       — show recent sessions
 /software-engineer update       — pull latest version
 /software-engineer help         — show all commands
 ```
+
+---
+
+## Before building anything, it asks you
+
+Before writing code, the system asks plain-language questions to remove all guesswork:
+
+- **Frontend tasks:** What colors? Top bar or side menu? Mobile-friendly?
+- **Backend tasks:** JWT auth or sessions? Rate limiting? API versioning?
+- **Database tasks:** Soft delete or hard delete? UUIDs or integers? Expected data size?
+
+For each decision, it shows you its recommendation first and asks if you agree. You can answer all questions at once or just say "use your recommendations" to accept all defaults.
+
+If you share a mockup image or screenshot, it reads it and only asks about the parts that are unclear — not generic "what do you want?" questions.
 
 ---
 

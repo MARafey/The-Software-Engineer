@@ -10,13 +10,22 @@ export const meta = {
   ],
 }
 
-const AGENTS_DIR    = 'C:/Users/Hp/Desktop/Agents'
-const sessionId     = (args && args.sessionId)    || 'no-session'
-const taskText      = (args && args.taskText)     || ''
-const projectPath   = (args && args.projectPath)  || ''
-const backendOutput = (args && args.backendOutput) || null
+const AGENTS_DIR         = 'C:/Users/Hp/Desktop/Agents'
+const sessionId          = (args && args.sessionId)          || 'no-session'
+const taskText           = (args && args.taskText)           || ''
+const projectPath        = (args && args.projectPath)        || ''
+const backendOutput      = (args && args.backendOutput)      || null
+const designPreferences  = (args && args.designPreferences)  || null
 
 const contractExports = (backendOutput && backendOutput.contractExports) || []
+
+// Build a plain-language design brief from the user's answered questions
+const designBrief = designPreferences ? [
+  designPreferences.colors        ? `Colors: ${designPreferences.colors}` : null,
+  designPreferences.navigation    ? `Navigation: ${designPreferences.navigation}` : null,
+  designPreferences.mobile != null ? `Mobile-friendly: ${designPreferences.mobile}` : null,
+  designPreferences.displayStyle  ? `Display style: ${designPreferences.displayStyle}` : null,
+].filter(Boolean).join('. ') : 'Match the existing design system in the project.'
 
 // ─── Phase: Load Context ─────────────────────────────────────────────────────
 phase('Load Context')
@@ -54,12 +63,13 @@ const uiDesign = await agent(
   `Task: "${taskText}"\n` +
   `Project: ${projectPath}\n` +
   `Design tokens: ${context.tokens || 'Use CSS custom properties from :root'}\n\n` +
+  `USER DESIGN PREFERENCES (from clarification — follow these exactly):\n${designBrief}\n\n` +
   `Examine the existing frontend at ${projectPath} to understand the current design system.\n\n` +
   `Design the UI for this feature:\n` +
   `1. What pages/views are needed?\n` +
-  `2. What layout pattern fits (full-page, modal, sidebar, card)?\n` +
-  `3. Which design tokens apply?\n` +
-  `4. What's the responsive behavior (mobile-first breakpoints)?\n` +
+  `2. What layout pattern fits (full-page, modal, sidebar, card)? Apply the navigation preference above.\n` +
+  `3. Which design tokens / colors apply? Use the user's specified colors if provided.\n` +
+  `4. What's the responsive behavior? If mobile: true was specified, design mobile-first.\n` +
   `5. What loading, empty, and error states are needed?\n\n` +
   `Return JSON: { pages: [{name,type:"page"|"layout"|"widget"|"form",description,responsive:true}], designDecisions: [string] }`,
   {

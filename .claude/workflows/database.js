@@ -10,10 +10,19 @@ export const meta = {
   ],
 }
 
-const AGENTS_DIR  = 'C:/Users/Hp/Desktop/Agents'
-const sessionId   = (args && args.sessionId)   || 'no-session'
-const taskText    = (args && args.taskText)    || ''
-const projectPath = (args && args.projectPath) || ''
+const AGENTS_DIR     = 'C:/Users/Hp/Desktop/Agents'
+const sessionId      = (args && args.sessionId)     || 'no-session'
+const taskText       = (args && args.taskText)      || ''
+const projectPath    = (args && args.projectPath)   || ''
+const dbPreferences  = (args && args.dbPreferences) || null
+
+// Build a plain-language schema brief from user's clarification answers
+const dbBrief = dbPreferences ? [
+  dbPreferences.softDeletes    != null ? `Soft deletes: ${dbPreferences.softDeletes ? 'yes — add deleted_at column, never hard delete' : 'no — hard delete records'}` : null,
+  dbPreferences.addTimestamps  != null ? `Timestamps: ${dbPreferences.addTimestamps ? 'yes — add created_at and updated_at to every table' : 'no timestamps'}` : null,
+  dbPreferences.dataSize              ? `Expected data size: ${dbPreferences.dataSize} — choose indexes accordingly` : null,
+  dbPreferences.idType                ? `Primary key type: ${dbPreferences.idType === 'uuid' ? 'UUID (TEXT)' : 'auto-increment INTEGER'}` : null,
+].filter(Boolean).join('. ') : 'Follow existing project conventions. Add created_at/updated_at timestamps and use UUIDs by default.'
 
 // ─── Phase: Load Context ─────────────────────────────────────────────────────
 phase('Load Context')
@@ -48,6 +57,7 @@ const tableDesign = await agent(
   `Task: "${taskText}"\n` +
   `Project path: ${projectPath}\n` +
   `Prior decisions: ${JSON.stringify(context.decisions.slice(0, 5))}\n\n` +
+  `DATABASE DESIGN PREFERENCES (from user clarification — follow these exactly):\n${dbBrief}\n\n` +
   `Examine the project at ${projectPath} to understand existing tables and migrations.\n\n` +
   `Design and write the SQL migration for the tables needed by this task.\n\n` +
   `Requirements:\n` +
@@ -55,7 +65,8 @@ const tableDesign = await agent(
   `- All foreign keys must be explicit FOREIGN KEY constraints\n` +
   `- Include ON DELETE CASCADE or ON DELETE SET NULL as appropriate\n` +
   `- Migration filename format: YYYYMMDD_NNN_description.sql\n` +
-  `- Write the migration file to: ${projectPath}/migrations/<filename>\n\n` +
+  `- Write the migration file to: ${projectPath}/migrations/<filename>\n` +
+  `- Apply all preferences above (timestamps, soft deletes, ID type)\n\n` +
   `Return JSON: { migrationSQL: "<full SQL>", migrationFile: "<filename>", tables: [{ name, columns: [{name,type,nullable,primaryKey,foreignKey}], estimatedRows }] }`,
   {
     label: 'table-creator',

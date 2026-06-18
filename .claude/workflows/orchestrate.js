@@ -12,10 +12,11 @@ export const meta = {
   ],
 }
 
-// args: { task: string, projectPath: string }
-const AGENTS_DIR = 'C:/Users/Hp/Desktop/Agents'
-const taskText    = (args && args.task)        || ''
-const projectPath = (args && args.projectPath) || ''
+// args: { task: string, projectPath: string, clarifications?: { designPreferences, archPreferences, dbPreferences } }
+const AGENTS_DIR      = 'C:/Users/Hp/Desktop/Agents'
+const taskText        = (args && args.task)           || ''
+const projectPath     = (args && args.projectPath)    || ''
+const clarifications  = (args && args.clarifications) || {}
 
 // ─── Phase: Init ─────────────────────────────────────────────────────────────
 phase('Init')
@@ -115,7 +116,7 @@ if (classification.requiresDatabase) {
   phase('Database')
   databaseOutput = await workflow(
     { scriptPath: `${AGENTS_DIR}/.claude/workflows/database.js` },
-    { sessionId, taskText, projectPath }
+    { sessionId, taskText, projectPath, dbPreferences: clarifications.dbPreferences || null }
   )
   log(`database → ${databaseOutput && databaseOutput.status}`)
 }
@@ -125,7 +126,7 @@ if (classification.requiresBackend) {
   phase('Backend')
   backendOutput = await workflow(
     { scriptPath: `${AGENTS_DIR}/.claude/workflows/backend.js` },
-    { sessionId, taskText, projectPath, databaseOutput }
+    { sessionId, taskText, projectPath, databaseOutput, archPreferences: clarifications.archPreferences || null }
   )
   log(`backend → ${backendOutput && backendOutput.status}`)
 }
@@ -136,7 +137,7 @@ if (classification.requiresFrontend && backendOutput) {
   const results = await parallel([
     () => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/frontend.js` },
-      { sessionId, taskText, projectPath, backendOutput }
+      { sessionId, taskText, projectPath, backendOutput, designPreferences: clarifications.designPreferences || null }
     ),
     () => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/testing.js` },

@@ -10,11 +10,19 @@ export const meta = {
   ],
 }
 
-const AGENTS_DIR    = 'C:/Users/Hp/Desktop/Agents'
-const sessionId     = (args && args.sessionId)     || 'no-session'
-const taskText      = (args && args.taskText)      || ''
-const projectPath   = (args && args.projectPath)   || ''
-const databaseOutput = (args && args.databaseOutput) || null
+const AGENTS_DIR      = 'C:/Users/Hp/Desktop/Agents'
+const sessionId       = (args && args.sessionId)       || 'no-session'
+const taskText        = (args && args.taskText)        || ''
+const projectPath     = (args && args.projectPath)     || ''
+const databaseOutput  = (args && args.databaseOutput)  || null
+const archPreferences = (args && args.archPreferences) || null
+
+// Build arch brief from user's clarification answers
+const archBrief = archPreferences ? [
+  archPreferences.authMethod      ? `Authentication method: ${archPreferences.authMethod}` : null,
+  archPreferences.useRateLimiting != null ? `Rate limiting: ${archPreferences.useRateLimiting ? 'yes, 100 req/min per IP' : 'no'}` : null,
+  archPreferences.apiVersioning   ? `API path prefix: /api/${archPreferences.apiVersioning}/` : null,
+].filter(Boolean).join('. ') : 'Follow the existing project conventions.'
 
 // ─── Phase: Load Context ─────────────────────────────────────────────────────
 phase('Load Context')
@@ -51,13 +59,14 @@ const plan = await agent(
   `Project: ${projectPath}\n` +
   `Available database tables: ${tableContext}\n` +
   `Prior backend decisions: ${JSON.stringify(context.decisions.slice(0, 5))}\n\n` +
+  `ARCHITECTURE PREFERENCES (from user clarification — follow these exactly):\n${archBrief}\n\n` +
   `Read the project at ${projectPath} to understand existing structure and conventions.\n\n` +
   `Design the business logic flow:\n` +
-  `1. What routes are needed? (method, path, description, auth required?)\n` +
+  `1. What routes are needed? (method, path, description, auth required?) Apply the auth method preference above.\n` +
   `2. What does each controller function do? (thin — no business logic)\n` +
   `3. What does each service function do? (all business logic here)\n` +
   `4. What validation schemas are needed?\n` +
-  `5. What middleware is needed?\n\n` +
+  `5. What middleware is needed? Include rate limiting middleware if the user requested it.\n\n` +
   `Return JSON: { featureName: string, routes: [{method,path,description,authRequired,controllerFn,serviceFn}], validationSchemas: [{name,fields:[{name,type,required}]}], middleware: [string] }`,
   {
     label: 'flow-planner',

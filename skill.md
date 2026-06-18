@@ -1,36 +1,40 @@
 ---
 name: software-engineer
-description: Automated full-stack software engineering — one command runs the entire dev lifecycle. Database schema → backend routes → frontend components → Postman tests → security scan → git commit. Installs itself on first run.
+description: Automated full-stack software engineering — one command runs the entire dev lifecycle. Asks plain-English questions before building anything. Installs itself on first run.
 ---
 
 # Software Engineer
 
-A multi-agent orchestration system that covers the full software development lifecycle:
+A multi-agent system that covers the full development lifecycle:
 
 **database → backend → frontend → testing → security scan → git commit**
 
-Every agent has its own persistent SQLite knowledge base and Obsidian-compatible knowledge vault. They learn from each session and carry context across future runs — no hallucinating, no repeating yourself.
+Every agent has its own knowledge base. It learns from each session and carries that context into future runs. Before writing a single line of code, it asks you plain questions to remove all guesswork.
 
 ---
 
-## On every invocation — follow these steps exactly
+## On every invocation — follow these steps in order
 
-### Step 1: Resolve install path and check if installed
+### Step 1: Resolve install path
 
-- **Windows:** install path = `$env:USERPROFILE\.agents`
-- **macOS/Linux:** install path = `$HOME/.agents`
+- **Windows:** `$env:USERPROFILE\.agents`
+- **macOS/Linux:** `$HOME/.agents`
 
-Check if installed by looking for the orchestrator database:
-- Windows: `Test-Path "$env:USERPROFILE\.agents\shared\orchestrator.db"`
-- macOS/Linux: `[ -f "$HOME/.agents/shared/orchestrator.db" ]`
+Check if installed:
+- Windows: run `Test-Path "$env:USERPROFILE\.agents\shared\orchestrator.db"`
+- macOS/Linux: run `[ -f "$HOME/.agents/shared/orchestrator.db" ] && echo yes`
 
-### Step 2: Auto-install on first run (skip if already installed)
+### Step 2: Auto-install if not installed
 
-Tell the user: _"First run detected — installing Software Engineer agents (~30 seconds)..."_
+Tell the user: _"First run — installing Software Engineer agents. This takes about 30 seconds..."_
+
+Check prerequisites first:
+- Run `git --version` — if it fails: _"Git is required. Download from https://git-scm.com and re-run."_
+- Run `node --version` — if it fails: _"Node.js 18+ is required. Download from https://nodejs.org and re-run."_
 
 **Windows (PowerShell):**
 ```powershell
-git clone https://github.com/YOUR_GITHUB_USERNAME/software-engineer "$env:USERPROFILE\.agents" --depth 1
+git clone https://github.com/MARafey/The-Software-Engineer "$env:USERPROFILE\.agents" --depth 1
 Set-Location "$env:USERPROFILE\.agents"
 npm install --silent
 node init/bootstrap.js
@@ -38,81 +42,246 @@ node init/seed-vaults.js
 node init/verify.js
 ```
 
-**macOS/Linux (bash):**
+**macOS/Linux:**
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/software-engineer "$HOME/.agents" --depth 1
+git clone https://github.com/MARafey/The-Software-Engineer "$HOME/.agents" --depth 1
 cd "$HOME/.agents"
 npm install --silent && node init/bootstrap.js && node init/seed-vaults.js && node init/verify.js
 ```
 
-- If `verify.js` exits 0: tell user _"Installed successfully. Obsidian vaults are ready at `<install-path>/agents/*/vault/` — open any as a new vault in Obsidian."_
-- If it fails: show the error output, stop, and ask the user to report the issue.
+- If `verify.js` exits 0: _"Done. Obsidian vaults are ready — open any folder in `agents/*/vault/` as a new Obsidian vault."_
+- If it fails: Show the error output. Ask the user to open an issue at https://github.com/MARafey/The-Software-Engineer/issues
 
-**Prerequisites check** — before cloning, verify:
-1. `git --version` works — if not: _"Git is required. Install from https://git-scm.com"_
-2. `node --version` works — if not: _"Node.js 18+ is required. Install from https://nodejs.org"_
+### Step 3: Route the command
 
-### Step 3: Parse command and route
-
-Parse the full invocation: `/software-engineer <subcommand or task>`
-
-| Invocation | Action |
-|------------|--------|
-| `/software-engineer <task text>` | Run full orchestration pipeline |
-| `/software-engineer status` | Show recent sessions |
-| `/software-engineer update` | Pull latest version and re-init |
-| `/software-engineer onboard` | Learn the current project structure |
-| `/software-engineer help` | Show usage examples |
+| What the user typed | Action |
+|---------------------|--------|
+| `/software-engineer <task>` | Run the full pipeline — go to Step 4 |
+| `/software-engineer test` | Run health check — go to the Test section |
+| `/software-engineer status` | Show recent sessions — go to the Status section |
+| `/software-engineer update` | Pull latest version — go to the Update section |
+| `/software-engineer onboard` | Force re-scan of current project — go to the Onboard section |
+| `/software-engineer help` | Print usage — go to the Help section |
 
 ---
 
-## Subcommand: run the pipeline (default)
+## Step 4: Clarification Phase (runs before every pipeline task)
 
-When the user provides a task description, run the full orchestration.
+**This is the most important step.** Never start building before completing it.
 
-**Get current project path:**
+Get the current project path first:
 - Windows: `(Get-Location).Path`
 - macOS/Linux: `pwd`
 
-**Invoke the orchestrator workflow:**
+---
+
+### 4a: Understand the task
+
+Read the task carefully. If it is genuinely unclear — for example, "make it better", "fix the thing", or a single word — ask one focused question:
+
+> _"What specifically would you like me to build or fix? For example: 'add a login page', 'create a users table', 'fix the /api/orders route'."_
+
+Do not ask this if the task is reasonably clear.
+
+---
+
+### 4b: Handle images and mockups
+
+If the user has shared an image, screenshot, or wireframe:
+- Look at it carefully
+- If you can read it clearly: describe what you see and confirm: _"I can see [X]. I'll build this — does that match what you want?"_
+- If it is blurry, cropped, or unclear in any area, ask about only the unclear parts. Be specific:
+  > _"I can see the main card layout clearly. I'm not sure about the navigation — is that a top bar or a side drawer?"_
+  > _"The color in the header area is hard to read. What color is that?"_
+
+Do not ask the user to re-send the image. Ask targeted questions about the unclear parts only.
+
+---
+
+### 4c: Detect which domains this task touches
+
+Decide which of these apply:
+- **Database** — new tables, changing existing data structure, adding columns
+- **Backend** — new API routes, changing how the server works, authentication
+- **Frontend** — new pages, components, UI changes, anything the user sees
+
+---
+
+### 4d: Ask domain-specific questions
+
+Only ask questions relevant to the domains you detected above. Group all questions into one message — never ask one question at a time across multiple turns.
+
+**Use plain language. Avoid technical jargon unless the user introduced it.**
+
+---
+
+**If the task touches FRONTEND — ask these:**
+
+> _"A few quick questions about the design:"_
+>
+> **Colors:** What colors should this use?
+> - If you have specific brand colors, share the hex codes (e.g., `#2563EB`)
+> - If you want me to choose: I'll use a clean blue-and-white professional style
+>
+> **Layout:** How should users navigate to this?
+> - A) Top navigation bar
+> - B) Side menu
+> - C) No navigation (standalone page or modal)
+>
+> **Mobile:** Should this work on phones and tablets as well? (yes / no)
+>
+> **Display style** (if this shows a list of items):
+> - A) Cards (tiles, grid layout)
+> - B) Table (rows and columns)
+> - C) Simple list
+
+If the project was already onboarded and has an established design system, skip questions whose answers are already known and just confirm: _"I'll match the existing design: [describe what was found]."_
+
+---
+
+**If the task touches BACKEND — present recommendation and ask confirmation:**
+
+> _"For the backend, here's what I'm planning — let me know if you want any changes:"_
+>
+> **Authentication:**
+> → My recommendation: JWT tokens (no server-side sessions, scales well, works with any frontend). The token is stored in memory and sent as a header.
+> → Alternatives: cookie sessions (simpler but stateful), API keys (good for machine-to-machine only)
+> → **Which would you like? Or just say "your recommendation" to go with JWT.**
+>
+> **Rate limiting** (if routes are public-facing):
+> → I recommend adding rate limiting (100 requests per minute per IP) to prevent abuse.
+> → **Should I add this? (yes / no)**
+>
+> **API path format:**
+> → Should these routes live under `/api/v1/` (versioned) or `/api/` (no versioning)?
+> → I recommend `/api/v1/` — makes future migrations easier.
+
+---
+
+**If the task touches DATABASE — present recommendation and ask confirmation:**
+
+> _"For the database, here's what I'm planning:"_
+>
+> **Timestamps:** I'll add `created_at` and `updated_at` to every new table (makes debugging and auditing much easier).
+> → **Should I do this? (yes / skip timestamps)**
+>
+> **Deleting records:**
+> → My recommendation: **soft delete** — records get marked as deleted but stay in the database. This means you can recover mistakes and keep an audit trail.
+> → Alternative: hard delete — records are permanently removed (simpler but unrecoverable).
+> → **Which would you like?**
+>
+> **Expected data size** (helps choose the right indexes):
+> → A) Small — under 10,000 records per table
+> → B) Medium — 10,000 to 1 million records
+> → C) Large — over 1 million records
+>
+> **ID type:**
+> → My recommendation: **UUID** (text like `a1b2c3d4-...`) — better for distributed systems, no sequential guessing.
+> → Alternative: auto-increment integer (1, 2, 3…) — simpler, slightly smaller.
+> → **Which would you like? (uuid / integer / your recommendation)**
+
+---
+
+### 4e: Resolve answers
+
+Once the user replies:
+- If they say "yes to all", "looks good", "just do it", or similar → use all your recommendations as defaults
+- If they answer specific questions → use their answers, use defaults for anything not mentioned
+- If any answer is still ambiguous → ask one short follow-up question, then proceed
+
+Summarise what you're going to do in one short paragraph before starting the workflow. For example:
+> _"Got it. I'll add a login page using your brand blue (#1E3A8A), top navigation, mobile-friendly. Backend will use JWT auth with rate limiting. Database will use UUIDs, soft deletes, and timestamps. Starting now..."_
+
+---
+
+### Step 5: Run the orchestration
+
+Now collect all the user's answers into a preferences object and invoke the workflow:
+
 ```javascript
 Workflow({
   scriptPath: `<install-path>/.claude/workflows/orchestrate.js`,
   args: {
-    task: "<task text from user>",
-    projectPath: "<current working directory>"
+    task: "<original task text>",
+    projectPath: "<current working directory>",
+    clarifications: {
+      designPreferences: {
+        colors: "<hex codes or 'default' or null>",
+        navigation: "<'top-bar'|'side-menu'|'none'|null>",
+        mobile: <true|false|null>,
+        displayStyle: "<'cards'|'table'|'list'|null>"
+      },
+      archPreferences: {
+        authMethod: "<'jwt'|'sessions'|'api-keys'|'none'|null>",
+        useRateLimiting: <true|false|null>,
+        apiVersioning: "<'v1'|'none'|null>"
+      },
+      dbPreferences: {
+        softDeletes: <true|false|null>,
+        addTimestamps: <true|false|null>,
+        dataSize: "<'small'|'medium'|'large'|null>",
+        idType: "<'uuid'|'integer'|null>"
+      }
+    }
   }
 })
 ```
 
-**After workflow completes, summarize:**
-- Branch created and commit hash
-- Which agents ran (database / backend / frontend / testing / bridge / git)
-- Any contract violations or security flags that blocked the commit
-- Postman collection path if testing agent ran
-- Obsidian vault notes added this session
+Replace `<install-path>` with the actual install path for the current OS.
+
+---
+
+### Step 6: Report results
+
+After the workflow completes, summarise clearly:
+
+- **Branch created:** `feat/...` (or why no branch was created)
+- **Commit:** `feat(auth): add JWT login endpoint` (or why nothing was committed)
+- **What was built:** list the key files created
+- **Tests:** path to the Postman collection (or "no tests generated")
+- **Security:** any issues found (or "all clear")
+- **Contract check:** whether frontend/backend/database were consistent
+- If anything was **blocked** (contract violation, security issue): explain in plain language what failed and what the user should do to fix it
+
+---
+
+## Subcommand: test (one-turn health check)
+
+Run this to verify everything is installed and working correctly. No files are modified.
+
+```
+/software-engineer test
+```
+
+Get the install path, then run:
+- Windows: `Set-Location "$env:USERPROFILE\.agents"; node init/verify.js`
+- macOS/Linux: `cd "$HOME/.agents" && node init/verify.js`
+
+Show the full output. If all 35 checks pass: _"All systems operational. Ready to use."_
+
+If any check fails: show which check failed, what it means in plain language, and how to fix it (usually re-running `npm run init`).
 
 ---
 
 ## Subcommand: status
 
-Show the last 10 sessions from the orchestrator database.
+Show the last 10 sessions.
 
 Run:
 ```
 node <install-path>/shared/lib/db-cli.js query orchestrator "SELECT id, task_text, status, started_at, completed_at FROM sessions ORDER BY started_at DESC LIMIT 10"
 ```
 
-Format and display the results as a table. Show: session ID (first 8 chars), task, status, duration.
+Format as a table: ID (first 8 characters), task summary, status, how long it took.
 
 ---
 
 ## Subcommand: update
 
-Pull the latest version of the system and re-run init.
+Pull the latest version and re-run initialization.
 
+**Windows:**
 ```powershell
-# Windows
 Set-Location "$env:USERPROFILE\.agents"
 git pull origin main
 npm install --silent
@@ -120,34 +289,20 @@ node init/bootstrap.js
 node init/verify.js
 ```
 
+**macOS/Linux:**
 ```bash
-# macOS/Linux
 cd "$HOME/.agents" && git pull origin main && npm install --silent && node init/bootstrap.js && node init/verify.js
 ```
 
-Tell user which version they're now on (`git log -1 --oneline`).
+Show which version is now installed: `git log -1 --oneline`
 
 ---
 
-## Auto-onboarding (happens automatically — no command needed)
-
-The first time any task is run on a project the system has never seen, it runs a full codebase scan automatically before doing any work. You do not need to run a separate onboard command.
-
-The scan covers:
-- All existing routes (method, path, middleware, auth requirement)
-- All components (type, file, which APIs they call)
-- Full database schema (tables, columns, foreign keys, migrations)
-- Code conventions (commit style, import style, naming, linter config)
-- Security posture (CORS, CSP, input validation, token storage method)
-- Tech stack (framework, ORM, state management, styling, auth)
-
-All findings are saved to every agent's knowledge.db and vault before the first session runs.
-
 ## Subcommand: onboard (force re-scan)
 
-Forces a fresh codebase scan on the current project, even if it was onboarded before. Useful after a major refactor or when switching to a different codebase at the same path.
+Forces a fresh scan of the current project even if it has been onboarded before. Use this after a major refactor or when switching to a different project at the same path.
 
-Get the current project path. Then run:
+Get the current project path, then run:
 ```javascript
 Workflow({
   scriptPath: `<install-path>/.claude/workflows/onboard.js`,
@@ -159,93 +314,87 @@ Workflow({
 })
 ```
 
-After onboarding, agents know:
-- All existing API routes and their contracts
-- Existing component structure and API bindings
-- Database tables, relationships, and migration history
-- Naming conventions, import style, and error handling patterns
-- Security status: token storage, CORS, CSP, input validation
+Tell the user what was found: tech stack, number of routes, components, tables.
 
 ---
 
 ## Subcommand: help
 
-Show this:
-
+Show:
 ```
-/software-engineer <task>            — Run full pipeline on current project
-/software-engineer status            — Show recent sessions
-/software-engineer update            — Update to latest version
-/software-engineer onboard           — Learn current project structure
+/software-engineer <task>     — Plan, build, test, and commit anything
+/software-engineer test       — Run health check (35 checks, no files modified)
+/software-engineer status     — Show recent sessions
+/software-engineer update     — Pull latest version
+/software-engineer onboard    — Re-scan current project
+/software-engineer help       — Show this
 
 Examples:
-  /software-engineer add user authentication with JWT and refresh tokens
+  /software-engineer add user login with email and password
   /software-engineer fix the broken /api/orders route returning 500
   /software-engineer create a products table with categories
-  /software-engineer add a dashboard page showing sales statistics
+  /software-engineer add a dashboard showing sales stats
   /software-engineer generate Postman tests for all existing routes
-  /software-engineer add CSP and security headers to the backend
+  /software-engineer add security headers to the backend
 ```
 
 ---
 
 ## What each agent does
 
-| Agent | Responsibility | Sub-agents |
-|-------|---------------|------------|
-| **Database** | Migration SQL, FK validation, index optimization | table-creator, schema-validator, query-optimizer |
-| **Backend** | Express routes, controllers, services, JSDoc, READMEs | flow-planner, route-creator, code-standards, folder-structure |
-| **Frontend** | Components, API wiring, storage decisions | ui-designer, component-creator, api-request-handler, security-checker |
-| **Testing** | Postman v2.1 collection with positive/negative/auth tests | *(single-phase)* |
-| **Bridge** | Validates frontend↔backend↔database contract consistency | *(single-phase)* |
-| **Git** | 10-point security scan → feature branch → Conventional Commit | *(single-phase)* |
+| Agent | What it does | Experts inside |
+|-------|-------------|----------------|
+| **Database** | Writes migration SQL, checks foreign keys, adds indexes | table-creator, schema-validator, query-optimizer |
+| **Backend** | Creates routes, controllers, services with documentation | flow-planner, route-creator, code-standards, folder-structure |
+| **Frontend** | Builds components, wires API calls, enforces security rules | ui-designer, component-creator, api-wirer, security-checker |
+| **Testing** | Generates Postman tests (success case, error case, auth case per route) | — |
+| **Bridge** | Checks that frontend and backend are talking to each other correctly | — |
+| **Git** | Runs 10 security checks, creates branch, writes structured commit | — |
 
-**Dependency order (always enforced):**
+**Order (always enforced):**
 ```
-database → backend → frontend + testing (parallel) → bridge → git
-```
-
----
-
-## Security rules enforced automatically
-
-The git agent blocks commits if any of these are detected:
-
-- `.env` files staged for commit
-- Hardcoded API keys, passwords, or secrets in source
-- Raw bearer tokens in source code
-- `localhost` URLs in non-test files
-- Auth token read from `localStorage`
-- Database credentials in `.js` or `.json` files
-- CSP headers missing when frontend files changed
-
----
-
-## Knowledge bases (Obsidian vaults)
-
-Each agent maintains a living Markdown knowledge base. Open any of these folders as a vault in Obsidian:
-
-```
-~/.agents/agents/backend/vault/      — Express patterns, security, decisions
-~/.agents/agents/frontend/vault/     — Design tokens, storage rules, components
-~/.agents/agents/database/vault/     — Schemas, migrations, query patterns
-~/.agents/agents/testing/vault/      — Postman collections, test reports
-~/.agents/agents/gitdevops/vault/    — Branch strategy, security scan results
-~/.agents/agents/mcpbridge/vault/    — Contract validation history
+[onboard — first use only] → database → backend → frontend + testing → bridge → git
 ```
 
 ---
 
-## How to install this skill
+## Security checks (always run before committing)
 
-**Windows (PowerShell — one command):**
+These block the commit automatically if found:
+- `.env` file accidentally included
+- Hardcoded passwords, API keys, or secrets
+- Raw auth tokens in source code
+- `localhost` URLs in production code
+- Auth token read from browser localStorage
+- Database passwords in JavaScript files
+- CSP security headers missing when frontend changed
+
+---
+
+## Knowledge bases
+
+Each agent keeps a personal knowledge base. Open any of these in Obsidian:
+```
+<install-path>/agents/backend/vault/    — route patterns, decisions, security rules
+<install-path>/agents/frontend/vault/   — design tokens, storage rules, components
+<install-path>/agents/database/vault/   — schemas, migrations, query notes
+<install-path>/agents/testing/vault/    — Postman collections, test reports
+<install-path>/agents/gitdevops/vault/  — branch history, security scan results
+<install-path>/agents/mcpbridge/vault/  — contract validation history
+```
+
+---
+
+## How to install this skill (one command)
+
+**Windows (PowerShell):**
 ```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/software-engineer/main/skill.md" -OutFile "$env:USERPROFILE\.claude\skills\software-engineer.md"
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/MARafey/The-Software-Engineer/main/skill.md" -OutFile "$env:USERPROFILE\.claude\skills\software-engineer.md"
 ```
 
-**macOS/Linux (one command):**
+**macOS/Linux:**
 ```bash
-mkdir -p ~/.claude/skills && curl -o ~/.claude/skills/software-engineer.md https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/software-engineer/main/skill.md
+mkdir -p ~/.claude/skills && curl -o ~/.claude/skills/software-engineer.md https://raw.githubusercontent.com/MARafey/The-Software-Engineer/main/skill.md
 ```
 
-Then open Claude Code and type `/software-engineer` — it installs itself automatically.
+Open Claude Code and type `/software-engineer` — it installs the rest automatically.
