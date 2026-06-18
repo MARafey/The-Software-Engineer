@@ -1,0 +1,167 @@
+{
+  "type": "object",
+  "required": [
+    "sessionId",
+    "agentName",
+    "status"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "agentName": {
+      "type": "string",
+      "const": "frontend"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ]
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "filePath",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "page",
+              "layout",
+              "widget",
+              "form"
+            ]
+          },
+          "usesAPI": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "stateSlices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "storageLayer",
+          "sensitivity"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "storageLayer": {
+            "type": "string",
+            "enum": [
+              "redux",
+              "zustand",
+              "context",
+              "sessionStorage",
+              "localStorage",
+              "memory"
+            ]
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "public",
+              "session",
+              "private"
+            ]
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "apiBindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "component",
+          "routePath",
+          "method"
+        ],
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "routePath": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "storageTarget": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securityFlags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "severity",
+          "rule",
+          "location",
+          "message"
+        ],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ]
+          },
+          "rule": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "filesChanged": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "type": "object",
+  "required": [
+    "sessionId",
+    "agentName",
+    "status"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "agentName": {
+      "type": "string",
+      "const": "mcpbridge"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ]
+    },
+    "integrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "serviceName",
+          "authStrategy"
+        ],
+        "properties": {
+          "serviceName": {
+            "type": "string"
+          },
+          "stubFilePath": {
+            "type": "string"
+          },
+          "authStrategy": {
+            "type": "string",
+            "enum": [
+              "apiKey",
+              "oauth2",
+              "bearerToken",
+              "webhook-secret"
+            ]
+          },
+          "endpointsStubbed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "contractValidation": {
+      "type": "object",
+      "required": [
+        "passed"
+      ],
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "frontendBinding": {
+                "type": "string"
+              },
+              "backendRoute": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

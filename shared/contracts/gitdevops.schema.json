@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "required": [
+    "sessionId",
+    "agentName",
+    "status"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "agentName": {
+      "type": "string",
+      "const": "gitdevops"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ]
+    },
+    "branch": {
+      "type": "string"
+    },
+    "commitHash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "commitMessage": {
+      "type": "string"
+    },
+    "filesCommitted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "securityFlags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "check",
+          "passed",
+          "severity"
+        ],
+        "properties": {
+          "check": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocking",
+              "warning",
+              "info"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "blockedBy": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

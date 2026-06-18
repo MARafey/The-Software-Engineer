@@ -1,0 +1,113 @@
+{
+  "type": "object",
+  "required": [
+    "sessionId",
+    "agentName",
+    "status"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "agentName": {
+      "type": "string",
+      "const": "backend"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ]
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "method",
+          "path",
+          "handler",
+          "middleware",
+          "description",
+          "authRequired"
+        ],
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "handler": {
+            "type": "string"
+          },
+          "middleware": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "authRequired": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "contractExports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "routeMethod",
+          "routePath",
+          "authScheme"
+        ],
+        "properties": {
+          "routeMethod": {
+            "type": "string"
+          },
+          "routePath": {
+            "type": "string"
+          },
+          "requestShape": {
+            "type": "object"
+          },
+          "responseShape": {
+            "type": "object"
+          },
+          "authScheme": {
+            "type": "string",
+            "enum": [
+              "none",
+              "bearer",
+              "apiKey"
+            ]
+          }
+        }
+      }
+    },
+    "filesChanged": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

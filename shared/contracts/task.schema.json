@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "required": [
+    "sessionId",
+    "taskText",
+    "projectPath",
+    "domainHints",
+    "dependencies",
+    "createdAt"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "taskText": {
+      "type": "string"
+    },
+    "projectPath": {
+      "type": "string"
+    },
+    "domainHints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high"
+      ]
+    },
+    "dependencies": {
+      "type": "object",
+      "required": [
+        "requiresDatabase",
+        "requiresBackend",
+        "requiresFrontend"
+      ],
+      "properties": {
+        "requiresDatabase": {
+          "type": "boolean"
+        },
+        "requiresBackend": {
+          "type": "boolean"
+        },
+        "requiresFrontend": {
+          "type": "boolean"
+        }
+      }
+    },
+    "createdAt": {
+      "type": "number"
+    }
+  }
+}

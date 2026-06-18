@@ -1,0 +1,207 @@
+export const meta = {
+  name: 'backend',
+  description: 'Backend domain agent — routes, controllers, services, code standards, folder structure',
+  phases: [
+    { title: 'Load Context', detail: 'Read vault notes and prior decisions' },
+    { title: 'Plan', detail: 'flow-planner designs business logic flow' },
+    { title: 'Build', detail: 'route-creator generates code files' },
+    { title: 'Standards', detail: 'code-standards audits JSDoc, errors, comments' },
+    { title: 'Structure', detail: 'folder-structure verifies layout and READMEs' },
+  ],
+}
+
+const AGENTS_DIR    = 'C:/Users/Hp/Desktop/Agents'
+const sessionId     = (args && args.sessionId)     || 'no-session'
+const taskText      = (args && args.taskText)      || ''
+const projectPath   = (args && args.projectPath)   || ''
+const databaseOutput = (args && args.databaseOutput) || null
+
+// ─── Phase: Load Context ─────────────────────────────────────────────────────
+phase('Load Context')
+
+const context = await agent(
+  `Load context for the Backend Agent (session: ${sessionId}).\n\n` +
+  `Run:\ncd "${AGENTS_DIR}" && node shared/lib/db-cli.js get-decisions backend express-patterns 10\n\n` +
+  `Then read: ${AGENTS_DIR}/agents/backend/vault/INDEX.md\n` +
+  `Then read any relevant vault notes for the task: "${taskText}"\n\n` +
+  `Return JSON: { decisions: <array from command>, relevantNoteCount: <number> }`,
+  {
+    label: 'load-context',
+    schema: {
+      type: 'object',
+      required: ['decisions'],
+      properties: {
+        decisions:        { type: 'array' },
+        relevantNoteCount: { type: 'number' },
+      },
+    },
+  }
+)
+
+log(`Loaded ${context.decisions.length} decisions`)
+
+const tableContext = databaseOutput ? JSON.stringify(databaseOutput.tables || []) : '[]'
+
+// ─── Phase: Plan ─────────────────────────────────────────────────────────────
+phase('Plan')
+
+const plan = await agent(
+  `You are the flow-planner sub-agent of the Backend Agent.\n\n` +
+  `Task: "${taskText}"\n` +
+  `Project: ${projectPath}\n` +
+  `Available database tables: ${tableContext}\n` +
+  `Prior backend decisions: ${JSON.stringify(context.decisions.slice(0, 5))}\n\n` +
+  `Read the project at ${projectPath} to understand existing structure and conventions.\n\n` +
+  `Design the business logic flow:\n` +
+  `1. What routes are needed? (method, path, description, auth required?)\n` +
+  `2. What does each controller function do? (thin — no business logic)\n` +
+  `3. What does each service function do? (all business logic here)\n` +
+  `4. What validation schemas are needed?\n` +
+  `5. What middleware is needed?\n\n` +
+  `Return JSON: { featureName: string, routes: [{method,path,description,authRequired,controllerFn,serviceFn}], validationSchemas: [{name,fields:[{name,type,required}]}], middleware: [string] }`,
+  {
+    label: 'flow-planner',
+    phase: 'Plan',
+    schema: {
+      type: 'object',
+      required: ['featureName', 'routes', 'validationSchemas', 'middleware'],
+      properties: {
+        featureName:       { type: 'string' },
+        routes:            { type: 'array' },
+        validationSchemas: { type: 'array' },
+        middleware:        { type: 'array', items: { type: 'string' } },
+      },
+    },
+  }
+)
+
+log(`Planned ${plan.routes.length} route(s) for feature: ${plan.featureName}`)
+
+// ─── Phase: Build ─────────────────────────────────────────────────────────────
+phase('Build')
+
+const build = await agent(
+  `You are the route-creator sub-agent of the Backend Agent.\n\n` +
+  `Task: "${taskText}"\n` +
+  `Project: ${projectPath}\n` +
+  `Feature name: ${plan.featureName}\n` +
+  `Routes to implement: ${JSON.stringify(plan.routes)}\n` +
+  `Validation schemas: ${JSON.stringify(plan.validationSchemas)}\n\n` +
+  `Read the existing code at ${projectPath} to follow its conventions.\n\n` +
+  `Create these files in src/features/${plan.featureName}/:\n` +
+  `  routes.js   — MUST export array of: {method,path,handler,middleware[],description,requestBodySchema,responseSchema,authRequired}\n` +
+  `  controller.js — thin layer, imports from service.js\n` +
+  `  service.js  — all business logic\n` +
+  `  schema.js   — validation schemas\n\n` +
+  `Error format everywhere: { success: false, code: 'ERR_CODE', message: '...', details: {} }\n\n` +
+  `Return JSON: { filesCreated: [string], filesUpdated: [string], routeContracts: [{method,path,handler,middleware,description,requestBodySchema,responseSchema,authRequired}] }`,
+  {
+    label: 'route-creator',
+    phase: 'Build',
+    schema: {
+      type: 'object',
+      required: ['filesCreated', 'filesUpdated', 'routeContracts'],
+      properties: {
+        filesCreated:   { type: 'array', items: { type: 'string' } },
+        filesUpdated:   { type: 'array', items: { type: 'string' } },
+        routeContracts: { type: 'array' },
+      },
+    },
+  }
+)
+
+log(`Created ${build.filesCreated.length} files, updated ${build.filesUpdated.length}`)
+
+// ─── Phase: Standards ─────────────────────────────────────────────────────────
+phase('Standards')
+
+const standards = await agent(
+  `You are the code-standards sub-agent of the Backend Agent.\n\n` +
+  `Audit and fix these files at ${projectPath}:\n${JSON.stringify([...build.filesCreated, ...build.filesUpdated])}\n\n` +
+  `Enforce:\n` +
+  `1. Every exported function has @param and @returns JSDoc\n` +
+  `2. Error responses use: { success: false, code: 'ERR_X', message: '...', details: {} }\n` +
+  `3. No stack traces in error responses\n` +
+  `4. No console.log in production paths\n` +
+  `5. No bare catch blocks — errors must be handled\n\n` +
+  `Fix all violations in-place by editing the files.\n\n` +
+  `Return JSON: { violations: [{file,issue,fixed:boolean}], filesFixed: [string] }`,
+  {
+    label: 'code-standards',
+    phase: 'Standards',
+    schema: {
+      type: 'object',
+      required: ['violations', 'filesFixed'],
+      properties: {
+        violations: { type: 'array' },
+        filesFixed: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  }
+)
+
+log(`Standards: ${standards.violations.length} violation(s), ${standards.filesFixed.length} fixed`)
+
+// ─── Phase: Structure ─────────────────────────────────────────────────────────
+phase('Structure')
+
+const structure = await agent(
+  `You are the folder-structure sub-agent of the Backend Agent.\n\n` +
+  `Verify and fix the feature folder for "${plan.featureName}" at ${projectPath}/src/features/${plan.featureName}/.\n\n` +
+  `Check:\n` +
+  `1. routes.js, controller.js, service.js, schema.js all exist\n` +
+  `2. README.md exists with: description, endpoints table (method/path/auth/description), dependencies section\n` +
+  `3. Files are in the correct folder — not scattered elsewhere\n\n` +
+  `Create any missing README.md with proper content.\n\n` +
+  `Return JSON: { missingFiles: [string], createdFiles: [string], folderIssues: [string] }`,
+  {
+    label: 'folder-structure',
+    phase: 'Structure',
+    schema: {
+      type: 'object',
+      required: ['missingFiles', 'createdFiles', 'folderIssues'],
+      properties: {
+        missingFiles: { type: 'array', items: { type: 'string' } },
+        createdFiles: { type: 'array', items: { type: 'string' } },
+        folderIssues: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  }
+)
+
+log(`Structure: created ${structure.createdFiles.length} missing file(s)`)
+
+// Persist state
+await agent(
+  `Save backend agent state. Run:\n` +
+  `cd "${AGENTS_DIR}" && node shared/lib/db-cli.js save-decision backend "${sessionId}" "express-patterns" ` +
+  `"Created ${build.routeContracts.length} routes for: ${taskText.slice(0,60).replace(/"/g,'')}" "Feature: ${plan.featureName}"\n\n` +
+  `Return "done".`,
+  { label: 'persist-state' }
+)
+
+const contractExports = build.routeContracts.map(r => ({
+  routeMethod:   r.method,
+  routePath:     r.path,
+  requestShape:  r.requestBodySchema  || {},
+  responseShape: r.responseSchema     || {},
+  authScheme:    r.authRequired ? 'bearer' : 'none',
+}))
+
+const allFiles = [
+  ...build.filesCreated,
+  ...build.filesUpdated,
+  ...standards.filesFixed,
+  ...structure.createdFiles,
+]
+
+return {
+  sessionId,
+  agentName:      'backend',
+  status:         'completed',
+  routes:         build.routeContracts,
+  handlers:       build.filesCreated.map(f => ({ filePath: f, functions: [], feature: plan.featureName })),
+  filesChanged:   allFiles,
+  contractExports,
+  errors:         standards.violations.filter(v => !v.fixed).map(v => `${v.file}: ${v.issue}`),
+}

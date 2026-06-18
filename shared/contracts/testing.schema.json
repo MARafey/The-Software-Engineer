@@ -1,0 +1,85 @@
+{
+  "type": "object",
+  "required": [
+    "sessionId",
+    "agentName",
+    "status"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "agentName": {
+      "type": "string",
+      "const": "testing"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed"
+      ]
+    },
+    "collectionPath": {
+      "type": "string"
+    },
+    "routeCount": {
+      "type": "number"
+    },
+    "testCases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "routePath",
+          "method",
+          "scenarioName",
+          "type",
+          "expectedStatus"
+        ],
+        "properties": {
+          "routePath": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string"
+          },
+          "scenarioName": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "auth"
+            ]
+          },
+          "expectedStatus": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "routesCovered": {
+          "type": "number"
+        },
+        "totalRoutes": {
+          "type": "number"
+        },
+        "percentCovered": {
+          "type": "number"
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

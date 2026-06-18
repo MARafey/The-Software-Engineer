@@ -1,0 +1,5 @@
+node_modules/
+shared/orchestrator.db
+agents/*/knowledge.db
+.env
+*.env
