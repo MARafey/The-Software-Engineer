@@ -164,21 +164,54 @@ if (use3D) {
     `   - Post-processing (EffectComposer): bloom (UnrealBloomPass), SSAO (SSAOPass), film grain (FilmPass)\n\n` +
 
     `8. PERFORMANCE RULES (must follow — 3D is GPU-intensive):\n` +
-    `   - Draw call budget: < 100 draw calls total; merge static geometries with BufferGeometryUtils.mergeBufferGeometries()\n` +
-    `   - Texture size: power-of-two dimensions; max 2048×2048 for mobile, 4096 only for desktop hero assets\n` +
+    `   - Draw call budget: < 100 draw calls total; merge static geometries with BufferGeometryUtils.mergeGeometries()\n` +
+    `   - Texture size: power-of-two; max 1024×1024 on mobile, 2048×2048 on desktop, 4096 only for hero desktop assets\n` +
     `   - Texture compression: KTX2 (Basis Universal) for web delivery\n` +
     `   - Frustum culling: object.frustumCulled = true (Three.js default — do not disable)\n` +
     `   - Memory disposal: geometry.dispose(), material.dispose(), texture.dispose() in cleanup/unmount\n` +
     `   - Stats.js (dev only): monitor FPS, memory, render time\n` +
-    `   - Avoid per-frame object creation — reuse Vector3/Quaternion instances\n\n` +
+    `   - Avoid per-frame object creation — reuse Vector3/Quaternion instances outside the loop\n\n` +
 
-    `9. FILE STRUCTURE TO CREATE:\n` +
-    `   src/3d/scene.js          — WebGLRenderer, PerspectiveCamera, scene graph, animation loop\n` +
-    `   src/3d/objects/<name>.js — one file per significant 3D object group\n` +
-    `   src/3d/shaders/          — .glsl files (or JS template literals) per shader\n` +
-    `   src/3d/physics.js        — physics world + body definitions (only if physics used)\n` +
-    `   src/3d/scroll.js         — Lenis init + ScrollTrigger scenes (only if scroll used)\n` +
-    `   src/3d/utils/dispose.js  — cleanup utility for Three.js resources\n\n` +
+    (designPreferences && designPreferences.mobile
+      ? `9. MOBILE-RESPONSIVE 3D (MANDATORY — user selected mobile: true):\n` +
+        `   ALL FOUR of these rules are non-negotiable for mobile:\n\n` +
+        `   RULE 1 — HTML UI overlays (never build UI inside the WebGL canvas):\n` +
+        `   - The <canvas> element MUST have: position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;\n` +
+        `   - All chat boxes, buttons, navigation, text, and controls MUST be in a separate HTML div overlay with z-index: 10 or higher\n` +
+        `   - This keeps text crisp on retina screens, UI accessible to screen readers, and layout responsive via CSS\n` +
+        `   - Never render text, buttons, or interactive controls as Three.js sprites or textures\n\n` +
+        `   RULE 2 — Dynamic pixel ratio clamping (prevent GPU throttle and battery drain on mobile):\n` +
+        `   - Raw Three.js: renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))\n` +
+        `   - React Three Fiber: <Canvas dpr={[1, 1.5]}> — NEVER dpr={[1, 2]} for mobile-first scenes\n` +
+        `   - Rationale: phones have 3× retina screens; rendering at full ratio pushes 9× the pixels vs desktop — drains battery, throttles GPU\n` +
+        `   - The visual difference at 1.5 cap is imperceptible on a handheld screen at normal viewing distance\n\n` +
+        `   RULE 3 — Touch-safe camera controls (prevent scroll-jacking on mobile):\n` +
+        `   - If OrbitControls is used: detect mobile viewport (window.innerWidth < 768) and set controls.enableZoom = false; controls.enablePan = false;\n` +
+        `   - If the canvas sits in a scrollable page, the canvas pointerEvents must pass through on mobile: canvas.style.pointerEvents = isMobile ? 'none' : 'auto'\n` +
+        `   - Alternatively use touch-passthrough mode: only capture touches that begin on the agent/object hit-zone, pass all others to the document\n` +
+        `   - Never trap scroll events — users must be able to scroll past a 3D section without their thumb getting stuck\n\n` +
+        `   RULE 4 — Responsive field of view (keep the subject in frame on narrow screens):\n` +
+        `   - Desktop FOV looks correct on 16:9 widescreen. On a 9:16 phone the same FOV crops the subject\n` +
+        `   - Write a useResponsiveFOV hook (R3F) or resize listener (raw Three.js) that:\n` +
+        `       const aspect = window.innerWidth / window.innerHeight\n` +
+        `       camera.fov = aspect < 1 ? desktopFOV * (1 / aspect) * 0.85 : desktopFOV\n` +
+        `       camera.updateProjectionMatrix()\n` +
+        `   - Alternatively push the camera back on narrow viewports: camera.position.z = aspect < 1 ? desktopZ * 1.4 : desktopZ\n` +
+        `   - Run this on every resize event and on mount\n\n`
+      : `9. MOBILE CONSIDERATIONS (apply these if the scene may be viewed on mobile):\n` +
+        `   - Clamp pixel ratio: Math.min(devicePixelRatio, 2) — if mobile traffic expected, lower to 1.5\n` +
+        `   - Keep all interactive UI (buttons, text, chat) in HTML overlays above the canvas, not inside the WebGL scene\n` +
+        `   - Audit OrbitControls touch behaviour — disable pan/zoom if it conflicts with page scroll\n` +
+        `   - Test camera FOV on a 390×844 (iPhone) viewport — adjust FOV or camera Z if subject is cropped\n\n`) +
+
+    `10. FILE STRUCTURE TO CREATE:\n` +
+    `   src/3d/scene.js            — WebGLRenderer, PerspectiveCamera, scene graph, animation loop\n` +
+    `   src/3d/objects/<name>.js   — one file per significant 3D object group\n` +
+    `   src/3d/shaders/            — .glsl files (or JS template literals) per shader\n` +
+    `   src/3d/physics.js          — physics world + body definitions (only if physics used)\n` +
+    `   src/3d/scroll.js           — Lenis init + ScrollTrigger scenes (only if scroll used)\n` +
+    `   src/3d/utils/dispose.js    — cleanup utility for Three.js resources\n` +
+    `   src/3d/hooks/useResponsiveFOV.js — responsive FOV/camera hook (always include)\n\n` +
 
     `Return JSON with all fields populated:\n` +
     `{\n` +
@@ -189,6 +222,7 @@ if (use3D) {
     `  objects: [{ name, geometry, material, hasTextures, instanced, usesLOD, hasPhysicsBody, physicsShape }],\n` +
     `  animations: [{ name, type: "scroll"|"hover"|"idle"|"intro", easing, duration, trigger }],\n` +
     `  shaders: [{ name, purpose, uniforms: [string], vertexDisplacement: boolean, postProcessing: boolean }],\n` +
+    `  mobileStrategy: { dpr: number, uiLayer: "html-overlay"|"in-canvas", touchControls: string, fovStrategy: string },\n` +
     `  performanceNotes: [string],\n` +
     `  codeFiles: [string],\n` +
     `  installPackages: [string]\n` +
@@ -199,7 +233,7 @@ if (use3D) {
       model: 'claude-opus-4-8',
       schema: {
         type: 'object',
-        required: ['library', 'physicsEngine', 'scrollLibrary', 'sceneConfig', 'objects', 'animations', 'shaders', 'performanceNotes', 'codeFiles', 'installPackages'],
+        required: ['library', 'physicsEngine', 'scrollLibrary', 'sceneConfig', 'objects', 'animations', 'shaders', 'mobileStrategy', 'performanceNotes', 'codeFiles', 'installPackages'],
         properties: {
           library:          { type: 'string' },
           physicsEngine:    { type: 'string' },
@@ -208,6 +242,7 @@ if (use3D) {
           objects:          { type: 'array' },
           animations:       { type: 'array' },
           shaders:          { type: 'array' },
+          mobileStrategy:   { type: 'object' },
           performanceNotes: { type: 'array', items: { type: 'string' } },
           codeFiles:        { type: 'array', items: { type: 'string' } },
           installPackages:  { type: 'array', items: { type: 'string' } },
