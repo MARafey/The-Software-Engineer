@@ -6,13 +6,13 @@ export const meta = {
     { title: 'Onboard', detail: 'Deep project scan (first use only — reads entire codebase)' },
     { title: 'Database', detail: 'Schema and migration work' },
     { title: 'Backend', detail: 'Routes, controllers, services' },
-    { title: 'Frontend + Testing', detail: 'Components and Postman collections (parallel)' },
+    { title: 'Frontend + Testing + Calls', detail: 'Components, Postman collections, and telephony (parallel)' },
     { title: 'Bridge', detail: 'Contract validation across all domains' },
     { title: 'Git', detail: 'Branch, security scan, commit' },
   ],
 }
 
-// args: { task: string, projectPath: string, clarifications?: { designPreferences, archPreferences, dbPreferences } }
+// args: { task: string, projectPath: string, clarifications?: { designPreferences, archPreferences, dbPreferences, callPreferences } }
 const AGENTS_DIR      = 'C:/Users/Hp/Desktop/Agents'
 const taskText        = (args && args.task)           || ''
 const projectPath     = (args && args.projectPath)    || ''
@@ -84,17 +84,19 @@ const classification = await agent(
   `- requiresDatabase: true if new tables, schema changes, or data model work is needed\n` +
   `- requiresBackend: true if API routes, controllers, or server logic is needed\n` +
   `- requiresFrontend: true if UI components, pages, or client-side code is needed\n` +
+  `- requiresCalls: true if inbound or outbound phone/voice calls, IVR, telephony, Twilio, Vonage, dialing, or voicemail is involved\n` +
   `- taskType: one of feat | fix | chore | test | docs | refactor | security\n` +
   `- taskSlug: lowercase kebab-case, max 30 chars, derived from the task`,
   {
     label: 'classify-task',
     schema: {
       type: 'object',
-      required: ['requiresDatabase', 'requiresBackend', 'requiresFrontend', 'taskType', 'taskSlug'],
+      required: ['requiresDatabase', 'requiresBackend', 'requiresFrontend', 'requiresCalls', 'taskType', 'taskSlug'],
       properties: {
         requiresDatabase:  { type: 'boolean' },
         requiresBackend:   { type: 'boolean' },
         requiresFrontend:  { type: 'boolean' },
+        requiresCalls:     { type: 'boolean' },
         taskType:          { type: 'string' },
         taskSlug:          { type: 'string' },
       },
@@ -102,12 +104,13 @@ const classification = await agent(
   }
 )
 
-log(`db=${classification.requiresDatabase} be=${classification.requiresBackend} fe=${classification.requiresFrontend} type=${classification.taskType}`)
+log(`db=${classification.requiresDatabase} be=${classification.requiresBackend} fe=${classification.requiresFrontend} calls=${classification.requiresCalls} type=${classification.taskType}`)
 
 let databaseOutput = null
 let backendOutput  = null
 let frontendOutput = null
 let testingOutput  = null
+let callsOutput    = null
 let bridgeOutput   = null
 let gitOutput      = null
 
@@ -131,35 +134,47 @@ if (classification.requiresBackend) {
   log(`backend → ${backendOutput && backendOutput.status}`)
 }
 
-// ─── Phase: Frontend + Testing (parallel) ────────────────────────────────────
-phase('Frontend + Testing')
-if (classification.requiresFrontend && backendOutput) {
-  const results = await parallel([
-    () => workflow(
+// ─── Phase: Frontend + Testing + Calls (parallel) ────────────────────────────
+phase('Frontend + Testing + Calls')
+{
+  const parallelTasks = []
+
+  if (classification.requiresFrontend && backendOutput) {
+    parallelTasks.push(() => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/frontend.js` },
       { sessionId, taskText, projectPath, backendOutput, designPreferences: clarifications.designPreferences || null }
-    ),
-    () => workflow(
+    ))
+  }
+
+  if (backendOutput) {
+    parallelTasks.push(() => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/testing.js` },
       { sessionId, taskText, projectPath, backendOutput }
-    ),
-  ])
-  frontendOutput = results[0]
-  testingOutput  = results[1]
-  log(`frontend → ${frontendOutput && frontendOutput.status} | testing → ${testingOutput && testingOutput.status}`)
-} else if (backendOutput) {
-  testingOutput = await workflow(
-    { scriptPath: `${AGENTS_DIR}/.claude/workflows/testing.js` },
-    { sessionId, taskText, projectPath, backendOutput }
-  )
-  log(`testing → ${testingOutput && testingOutput.status}`)
+    ))
+  }
+
+  if (classification.requiresCalls) {
+    parallelTasks.push(() => workflow(
+      { scriptPath: `${AGENTS_DIR}/.claude/workflows/calls.js` },
+      { sessionId, taskText, projectPath, backendOutput, databaseOutput, callPreferences: clarifications.callPreferences || null }
+    ))
+  }
+
+  if (parallelTasks.length > 0) {
+    const results = await parallel(parallelTasks)
+    let idx = 0
+    if (classification.requiresFrontend && backendOutput) { frontendOutput = results[idx++] }
+    if (backendOutput)                                    { testingOutput  = results[idx++] }
+    if (classification.requiresCalls)                     { callsOutput    = results[idx++] }
+    log(`frontend → ${frontendOutput && frontendOutput.status} | testing → ${testingOutput && testingOutput.status} | calls → ${callsOutput && callsOutput.status}`)
+  }
 }
 
 // ─── Phase: Bridge ────────────────────────────────────────────────────────────
 phase('Bridge')
 bridgeOutput = await workflow(
   { scriptPath: `${AGENTS_DIR}/.claude/workflows/mcpbridge.js` },
-  { sessionId, taskText, projectPath, backendOutput, frontendOutput, databaseOutput }
+  { sessionId, taskText, projectPath, backendOutput, frontendOutput, databaseOutput, callsOutput }
 )
 const bridgePassed = bridgeOutput && bridgeOutput.contractValidation && bridgeOutput.contractValidation.passed
 log(`bridge → passed=${bridgePassed}`)
@@ -212,6 +227,7 @@ return {
     backendOutput  && 'backend',
     frontendOutput && 'frontend',
     testingOutput  && 'testing',
+    callsOutput    && 'calls',
     bridgeOutput   && 'mcpbridge',
     gitOutput      && 'gitdevops',
   ].filter(Boolean),

@@ -1630,8 +1630,456 @@ module.exports = { request };
 
 log.ok('mcpbridge vault seeded');
 
+// ─── Calls vault ──────────────────────────────────────────────────────────────
+writeNote('calls', 'providers/twilio-setup.md', `# Twilio Integration
+
+## Install
+\`\`\`bash
+npm install twilio
+\`\`\`
+
+## Client singleton (src/integrations/twilio.client.js)
+\`\`\`js
+'use strict'
+const twilio = require('twilio')
+let _client = null
+function getClient() {
+  if (!_client) _client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  return _client
+}
+module.exports = { getClient }
+\`\`\`
+
+## Environment variables required
+\`\`\`
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_PHONE_NUMBER=+15551234567
+BASE_URL=https://your-domain.com
+\`\`\`
+
+## Webhook signature validation (MANDATORY on every route)
+\`\`\`js
+const twilio = require('twilio')
+
+function validateTwilioSignature(req, res, next) {
+  const valid = twilio.validateRequest(
+    process.env.TWILIO_AUTH_TOKEN,
+    req.headers['x-twilio-signature'],
+    \`\${process.env.BASE_URL}\${req.originalUrl}\`,
+    req.body  // must be urlencoded body, not JSON — use express.urlencoded()
+  )
+  if (!valid) return res.status(403).json({ success: false, code: 'ERR_INVALID_SIGNATURE' })
+  next()
+}
+module.exports = { validateTwilioSignature }
+\`\`\`
+
+**Important:** Twilio webhooks send urlencoded POST bodies, not JSON. Use:
+\`app.use('/webhooks/twilio', express.urlencoded({ extended: false }))\`
+
+## Make an outbound call
+\`\`\`js
+const { getClient } = require('../integrations/twilio.client')
+
+async function dial({ to, twimlUrl, statusCallbackUrl }) {
+  return getClient().calls.create({
+    to,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    url: twimlUrl,                            // TwiML for call flow
+    statusCallback: statusCallbackUrl,         // receives call status updates
+    statusCallbackMethod: 'POST',
+    machineDetection: 'Enable',               // AMD
+    asyncAmd: true,
+    asyncAmdStatusCallback: statusCallbackUrl,
+  })
+}
+\`\`\`
+
+## Inbound TwiML response (Express handler)
+\`\`\`js
+const { VoiceResponse } = require('twilio').twiml
+
+function greetCaller(req, res) {
+  const response = new VoiceResponse()
+  response.say({ voice: 'Polly.Joanna' }, 'Thank you for calling. This call may be recorded.')
+  const gather = response.gather({ numDigits: 1, timeout: 5, action: '/webhooks/twilio/menu' })
+  gather.say({ voice: 'Polly.Joanna' }, 'Press 1 for support. Press 2 for billing. Press 3 to leave a message.')
+  response.redirect('/webhooks/twilio/inbound')  // timeout fallback: repeat
+  res.type('text/xml').send(response.toString())
+}
+\`\`\`
+`);
+
+writeNote('calls', 'providers/vonage-setup.md', `# Vonage Voice API Integration
+
+## Install
+\`\`\`bash
+npm install @vonage/server-sdk
+\`\`\`
+
+## Client singleton
+\`\`\`js
+const { Vonage } = require('@vonage/server-sdk')
+const vonage = new Vonage({
+  apiKey:    process.env.VONAGE_API_KEY,
+  apiSecret: process.env.VONAGE_API_SECRET,
+  applicationId: process.env.VONAGE_APP_ID,
+  privateKey: process.env.VONAGE_PRIVATE_KEY_PATH,
+})
+module.exports = { vonage }
+\`\`\`
+
+## NCCO (Nexmo Call Control Object) — Vonage equivalent of TwiML
+\`\`\`js
+// Inbound answer webhook returns NCCO array
+function answerWebhook(req, res) {
+  const ncco = [
+    { action: 'talk', text: 'Thank you for calling. Press 1 for support.', bargeIn: true },
+    {
+      action: 'input',
+      type: ['dtmf'],
+      dtmf: { timeOut: 5, maxDigits: 1 },
+      eventUrl: [process.env.BASE_URL + '/webhooks/vonage/input']
+    }
+  ]
+  res.json(ncco)
+}
+\`\`\`
+
+## Webhook signature validation
+\`\`\`js
+const crypto = require('crypto')
+
+function validateVonageSignature(req, res, next) {
+  const sig = req.headers['x-nexmo-signature']
+  const expected = crypto
+    .createHmac('sha256', process.env.VONAGE_SIGNATURE_SECRET)
+    .update(JSON.stringify(req.body))
+    .digest('hex')
+  if (sig !== expected) return res.status(403).json({ success: false, code: 'ERR_INVALID_SIGNATURE' })
+  next()
+}
+\`\`\`
+`);
+
+writeNote('calls', 'inbound/ivr-design.md', `# IVR Design Patterns
+
+## Core principles
+
+1. **Maximum 3 levels deep** — callers abandon after 3 menu levels
+2. **Every path terminates** — transfer / voicemail / message-and-hangup (no dead ends)
+3. **Timeout fallback** — always: no key pressed → repeat once → fallback action
+4. **Invalid input** → say "I didn't understand" → repeat menu once → fallback
+
+## Standard IVR state machine
+
+\`\`\`
+CALL_IN
+  └─ greeting + recording_consent (if recording)
+      └─ MAIN_MENU
+          ├─ [1] → SUPPORT_SUBMENU
+          │     ├─ [1] → transfer_to_agent
+          │     ├─ [2] → voicemail
+          │     └─ [timeout/invalid] → transfer_to_agent
+          ├─ [2] → BILLING_SUBMENU
+          │     └─ ...
+          ├─ [0] → transfer_to_agent (always offer 0 = human)
+          └─ [timeout/invalid] → repeat_menu → transfer_to_agent
+\`\`\`
+
+## Business hours check pattern
+
+\`\`\`js
+function isBusinessHours(timezone = 'America/New_York') {
+  const now = new Date()
+  const local = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+  const hour = local.getHours()
+  const day  = local.getDay()  // 0 = Sunday
+  return day >= 1 && day <= 5 && hour >= 8 && hour < 18
+}
+
+// In IVR handler
+if (!isBusinessHours()) {
+  // respond with after-hours TwiML → voicemail
+}
+\`\`\`
+
+## Call transfer (warm transfer)
+\`\`\`js
+const response = new VoiceResponse()
+response.say({ voice: 'Polly.Joanna' }, 'Please hold while I connect you to an agent.')
+const dial = response.dial({ callerId: process.env.TWILIO_PHONE_NUMBER, timeout: 30 })
+dial.number(process.env.AGENT_PHONE_NUMBER)
+// Add statusCallbackEvent to detect if agent doesn't answer → redirect to voicemail
+\`\`\`
+
+## Voicemail
+\`\`\`js
+const response = new VoiceResponse()
+response.say({ voice: 'Polly.Joanna' }, 'No one is available. Please leave a message after the tone.')
+response.record({
+  maxLength: 120,
+  transcribe: true,
+  transcribeCallback: '/webhooks/twilio/voicemail-transcription',
+  action: '/webhooks/twilio/voicemail-done',
+  playBeep: true,
+})
+\`\`\`
+`);
+
+writeNote('calls', 'outbound/campaign-patterns.md', `# Outbound Call Campaign Patterns
+
+## Pre-dial checklist (run before every outbound call)
+
+\`\`\`js
+async function preDialCheck(phoneNumber) {
+  // 1. Normalize number to E.164 format
+  const e164 = normalizeToE164(phoneNumber)
+  // 2. Check internal DNC list
+  const isDNC = await db.query('SELECT 1 FROM dnc_list WHERE phone = ?', [e164])
+  if (isDNC) throw new Error('DNC_BLOCKED')
+  // 3. Check calling hours (callee's local timezone)
+  const tz = await lookupTimezone(e164)  // use twilio lookup or ip-timezone
+  if (!isCallingHours(tz)) throw new Error('OUTSIDE_CALLING_HOURS')
+  // 4. Check retry count
+  const attempts = await db.query('SELECT count FROM call_attempts WHERE phone = ?', [e164])
+  if (attempts >= 3) throw new Error('MAX_RETRIES_REACHED')
+  return { e164, tz }
+}
+\`\`\`
+
+## Answering Machine Detection (AMD)
+
+\`\`\`js
+// Initial call with AMD enabled
+const call = await client.calls.create({
+  to: e164,
+  from: process.env.TWILIO_PHONE_NUMBER,
+  url: \`\${BASE_URL}/webhooks/twilio/outbound-twiml\`,
+  machineDetection: 'Enable',
+  asyncAmd: true,
+  asyncAmdStatusCallback: \`\${BASE_URL}/webhooks/twilio/amd-result\`,
+})
+
+// AMD result webhook handler
+function handleAmdResult(req, res) {
+  const { AnsweredBy, CallSid } = req.body
+  // AnsweredBy: "human" | "machine_start" | "machine_end_beep" | "fax" | "unknown"
+  if (AnsweredBy === 'human') {
+    // Update call with human-answered TwiML
+    client.calls(CallSid).update({ url: \`\${BASE_URL}/webhooks/twilio/human-script\` })
+  } else if (AnsweredBy.startsWith('machine')) {
+    // Update call with voicemail TwiML
+    client.calls(CallSid).update({ url: \`\${BASE_URL}/webhooks/twilio/voicemail-script\` })
+  }
+  res.sendStatus(200)
+}
+\`\`\`
+
+## Call result tracking
+
+\`\`\`js
+// Status callback handler — records every state transition
+async function handleStatusCallback(req, res) {
+  const { CallSid, CallStatus, CallDuration, To } = req.body
+  // CallStatus: initiated | ringing | in-progress | completed | busy | no-answer | canceled | failed
+  await db.query(
+    'INSERT OR REPLACE INTO call_logs (id, phone_number, status, duration_ms) VALUES (?, ?, ?, ?)',
+    [CallSid, To.slice(-4), CallStatus, (CallDuration || 0) * 1000]  // store last 4 digits only
+  )
+  res.sendStatus(200)
+}
+\`\`\`
+
+## Retry schedule
+
+\`\`\`js
+async function scheduleRetry(phoneNumber, attemptNumber) {
+  if (attemptNumber >= 3) return  // max 3 attempts
+  const delayHours = attemptNumber === 1 ? 1 : 4  // 1h after first, 4h after second
+  const retryAt = Date.now() + delayHours * 3600 * 1000
+  await db.query(
+    'INSERT INTO retry_queue (phone, retry_at, attempt) VALUES (?, ?, ?)',
+    [phoneNumber, retryAt, attemptNumber + 1]
+  )
+}
+\`\`\`
+`);
+
+writeNote('calls', 'compliance/tcpa-gdpr.md', `# Compliance Rules — TCPA & GDPR
+
+## TCPA (US — Telephone Consumer Protection Act)
+
+### Blocking violations (commit blocked if not resolved)
+
+| Rule | Requirement |
+|------|------------|
+| Prior consent | Automated calls to US mobile numbers require prior written consent |
+| Calling hours | 8am–9pm in the CALLEE's local timezone — not the caller's |
+| DNC list | Must check federal + state DNC list before EVERY outbound call |
+| Caller ID | Present a real working phone number — cannot spoof or hide |
+| Abandoned calls | Predictive dialer abandonment rate must stay < 3% per campaign |
+
+### Implementation requirements
+
+\`\`\`js
+// Consent must be recorded before dialing mobile numbers
+const consent = await db.query(
+  'SELECT given_at FROM consents WHERE phone = ? AND type = ?',
+  [phone, 'outbound_call']
+)
+if (!consent) throw new Error('NO_CONSENT_RECORDED')
+
+// Calling hours (CALLEE timezone)
+const tz = await client.lookups.v2.phoneNumbers(phone).fetch({ fields: 'line_type_intelligence' })
+// Use tz.callerName.callerType + tz to calculate local time
+\`\`\`
+
+## GDPR (EU — General Data Protection Regulation)
+
+| Rule | Requirement |
+|------|------------|
+| Lawful basis | Document why you are calling (consent / legitimate interest / contract) |
+| Data minimisation | Store only what is necessary — last 4 digits in logs, not full number |
+| Transcript encryption | Transcripts must be encrypted at rest; set retention limit (e.g. 90 days) |
+| Right to erasure | Deleting a contact must delete all call logs and recordings |
+| Recording consent | Spoken consent at the start of the call if recording (not just a notice) |
+
+## Recording consent script (required in UK, EU, many US states)
+
+> "This call may be recorded for quality and training purposes. By continuing, you consent to this recording. If you do not wish to be recorded, please press 9 now."
+
+## DNC list integration
+
+\`\`\`js
+// Minimum: internal DNC list
+// Recommended: integrate with National DNC Registry (FTC) via Data.com or Synapse API
+
+async function checkDNC(phone) {
+  const internal = await db.query('SELECT 1 FROM dnc_list WHERE phone = ?', [phone])
+  if (internal) return { blocked: true, reason: 'internal_dnc' }
+  // Add external DNC API check here
+  return { blocked: false }
+}
+
+// Opt-out handler — any caller pressing 9 or saying "stop" is added to DNC
+async function handleOptOut(phone) {
+  await db.query(
+    'INSERT OR IGNORE INTO dnc_list (phone, added_at, reason) VALUES (?, ?, ?)',
+    [phone, Date.now(), 'caller_request']
+  )
+}
+\`\`\`
+`);
+
+writeNote('calls', 'scripts/tts-writing-guide.md', `# TTS Voice Script Writing Guide
+
+## Core rules
+
+1. **Short sentences** — max 20 words. TTS rushes long sentences.
+2. **Spoken language** — "you'll" not "you will". Natural contractions.
+3. **Spell out numbers** — "eight hundred" not "800". "five fifty-five, one two three four" for phone numbers.
+4. **No punctuation TTS reads aloud** — no em dashes, no parentheses in speech paths.
+5. **Brand names** — add phonetic hints in square brackets if TTS mispronounces: "Aris[trull]"
+6. **Timing** — 130 words/minute is average TTS speed. 8-second greeting = ~17 words max.
+
+## Script templates
+
+### Greeting (max 17 words)
+✅ "Thank you for calling [Company]. This call may be recorded."
+❌ "Thank you for calling [Company], a leading provider of software solutions established in 2020."
+
+### Main menu
+✅ "Press 1 for support. Press 2 for billing. Press 0 to speak with someone."
+❌ "In order to route your call to the correct department, please listen carefully to the following options..."
+
+### Transfer
+✅ "Please hold. I'm connecting you now."
+❌ "One moment please while I transfer your call to the next available representative."
+
+### Voicemail prompt
+✅ "No one is available right now. Please leave your name and number after the tone."
+
+### After-hours
+✅ "Our office is closed. We're open Monday through Friday, nine to five. Please call back then, or leave a message."
+
+### Outbound intro (must identify company in first 5 words)
+✅ "Hello, this is [Company] calling for [Name]."
+❌ "Hi there, how are you doing today? I'm calling because..."
+
+### Error / didn't understand
+✅ "I didn't catch that. Let me repeat the options."
+
+### Goodbye
+✅ "Thank you for calling [Company]. Have a great day. Goodbye."
+
+## Accessibility notes
+- Offer a "press 0 for a person" option on every menu level
+- Keep hold music volume lower than voice prompts
+- Repeat menu options after 5-second silence (timeout) before fallback
+`);
+
+writeNote('calls', 'security/webhook-validation.md', `# Webhook Security
+
+## Twilio signature validation
+
+Every Twilio webhook MUST validate the X-Twilio-Signature header.
+Without this, anyone can POST fake call events to your endpoints.
+
+\`\`\`js
+const twilio = require('twilio')
+
+function validateTwilioSignature(req, res, next) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const signature = req.headers['x-twilio-signature']
+  const url       = \`\${process.env.BASE_URL}\${req.originalUrl}\`
+  const params    = req.body  // must be urlencoded body
+
+  if (!twilio.validateRequest(authToken, signature, url, params)) {
+    return res.status(403).json({ success: false, code: 'ERR_INVALID_SIGNATURE', message: 'Invalid Twilio signature' })
+  }
+  next()
+}
+\`\`\`
+
+**Critical:** Twilio sends urlencoded bodies, not JSON. The route must use:
+\`\`\`js
+router.use(express.urlencoded({ extended: false }))
+\`\`\`
+If you use \`express.json()\` on a Twilio route, the signature validation will fail.
+
+## Vonage signature validation
+
+\`\`\`js
+const crypto = require('crypto')
+
+function validateVonageSignature(req, res, next) {
+  const received = req.headers['x-nexmo-signature']
+  const computed = crypto
+    .createHmac('sha256', process.env.VONAGE_SIGNATURE_SECRET)
+    .update(JSON.stringify(req.body))
+    .digest('hex')
+  if (received !== computed) {
+    return res.status(403).json({ success: false, code: 'ERR_INVALID_SIGNATURE' })
+  }
+  next()
+}
+\`\`\`
+
+## General security rules
+
+- Never log full phone numbers — store and log the last 4 digits only
+- Never log full transcript text without encryption-at-rest confirmation
+- Call recordings must be served via presigned URLs, never public URLs
+- Rotate TWILIO_AUTH_TOKEN immediately if leaked (generates a new token in Twilio console)
+- Use separate Twilio subaccounts for prod vs staging
+`);
+
+log.ok('calls vault seeded');
+
 // ─── Update all INDEX.md files ────────────────────────────────────────────────
-const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge'];
+const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls'];
 AGENT_NAMES.forEach(name => {
   updateIndexMd(name);
   log.ok(`${name} vault/INDEX.md updated`);

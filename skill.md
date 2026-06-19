@@ -104,6 +104,7 @@ Decide which of these apply:
 - **Database** — new tables, changing existing data structure, adding columns
 - **Backend** — new API routes, changing how the server works, authentication
 - **Frontend** — new pages, components, UI changes, anything the user sees
+- **Calls** — phone calls, voice, IVR menus, Twilio/Vonage, dialing, voicemail, call recordings
 
 ---
 
@@ -140,6 +141,32 @@ Only ask questions relevant to the domains you detected above. Group all questio
 > - If yes: Is there scroll-driven animation — camera flying through a scene as you scroll? (yes / no)
 
 If the project was already onboarded and has an established design system, skip questions whose answers are already known and just confirm: _"I'll match the existing design: [describe what was found]."_
+
+---
+
+**If the task touches CALLS — ask these:**
+
+> _"A few questions about the phone/voice feature:"_
+>
+> **Direction:** Is this for:
+> - A) Receiving calls (inbound) — callers phone in, navigate an IVR menu, get routed to an agent or voicemail
+> - B) Making calls (outbound) — your system dials customers automatically
+> - C) Both
+>
+> **Provider:** Which telephony provider should we use?
+> → My recommendation: **Twilio** (most complete API, best documentation, global reach)
+> → Alternatives: Vonage, Plivo, Telnyx
+> → **Which would you like? Or "your recommendation" to go with Twilio.**
+>
+> **Call recording:** Should calls be recorded? (yes / no)
+> → If yes, I'll include spoken consent at the start of each call and store recordings securely.
+>
+> **Call type:**
+> - A) Fully automated IVR (callers press keys to navigate, no live agent)
+> - B) IVR that routes to a live agent (IVR for initial menu, then transfer)
+> - C) Outbound campaign (system dials a list of numbers with a pre-recorded or TTS script)
+>
+> **Transcription:** Should calls be transcribed automatically? (yes / no)
 
 ---
 
@@ -228,6 +255,13 @@ Workflow({
         addTimestamps: <true|false|null>,
         dataSize: "<'small'|'medium'|'large'|null>",
         idType: "<'uuid'|'integer'|null>"
+      },
+      callPreferences: {
+        callDirection: "<'inbound'|'outbound'|'both'|null>",
+        provider: "<'twilio'|'vonage'|'plivo'|null>",
+        callRecording: <true|false|null>,
+        callType: "<'automated-ivr'|'live-agent-routing'|'outbound-campaign'|null>",
+        requiresTranscription: <true|false|null>
       }
     }
   }
@@ -355,12 +389,13 @@ Examples:
 | **Backend** | Creates routes, controllers, services with documentation | flow-planner, route-creator, code-standards, folder-structure |
 | **Frontend** | Builds components, wires API calls, enforces security rules. For 3D tasks: designs Three.js/WebGL scene, physics, shaders, and scroll animation using Opus model | ui-designer, 3d-designer (Opus), component-creator, api-wirer, security-checker |
 | **Testing** | Generates Postman tests (success case, error case, auth case per route) | — |
+| **Calls** | Inbound IVR flows, outbound campaigns, webhook handlers, TTS scripts, TCPA/GDPR compliance | flow-designer, telephony-integrator, voice-script-writer, compliance-checker |
 | **Bridge** | Checks that frontend and backend are talking to each other correctly | — |
 | **Git** | Runs 10 security checks, creates branch, writes structured commit | — |
 
 **Order (always enforced):**
 ```
-[onboard — first use only] → database → backend → frontend + testing → bridge → git
+[onboard — first use only] → database → backend → frontend + testing + calls → bridge → git
 ```
 
 ---

@@ -2,7 +2,7 @@
 
 A multi-agent Claude Code skill that automates the full software development lifecycle.
 
-One command. Every agent runs in sequence — database schema, backend routes, frontend components, Postman tests, security scan, git commit. Each agent has its own SQLite knowledge base and Obsidian vault that grows smarter with every session.
+One command. Every agent runs in sequence — database schema, backend routes, frontend components, Postman tests, inbound/outbound call systems, security scan, git commit. Each agent has its own SQLite knowledge base and Obsidian vault that grows smarter with every session.
 
 ---
 
@@ -69,16 +69,17 @@ If you share a mockup image or screenshot, it reads it and only asks about the p
 Six agents then run in dependency order:
 
 ```
-[onboard — first use only] → database → backend → frontend + testing (parallel) → bridge → git
+[onboard — first use only] → database → backend → frontend + testing + calls (parallel) → bridge → git
 ```
 
 | Agent | Does |
 |-------|------|
 | **Database** | Writes migration SQL, validates foreign keys, adds indexes |
 | **Backend** | Creates Express routes, controllers, services with JSDoc |
-| **Frontend** | Builds components, wires API calls, enforces token/storage rules |
+| **Frontend** | Builds components, wires API calls, enforces token/storage rules. 3D tasks invoke Opus for scene/physics/shader design |
 | **Testing** | Generates Postman collection (positive + negative + auth tests per route) |
-| **Bridge** | Validates that frontend bindings match backend contracts |
+| **Calls** | Inbound IVR flows, outbound dialing campaigns, Twilio/Vonage webhooks, TTS scripts, TCPA/GDPR/DNC compliance |
+| **Bridge** | Validates that frontend bindings and telephony webhooks match backend contracts |
 | **Git** | Runs 10-point security scan, creates feature branch, writes Conventional Commit |
 
 ---
@@ -102,9 +103,10 @@ Each agent builds up its own Obsidian-compatible knowledge vault at `~/.agents/a
 
 ```
 ~/.agents/agents/backend/vault/     Express patterns, security rules, route decisions
-~/.agents/agents/frontend/vault/    Design tokens, storage rules, component library
+~/.agents/agents/frontend/vault/    Design tokens, storage rules, 3D scene patterns, component library
 ~/.agents/agents/database/vault/    Schemas, migrations, query optimization notes
 ~/.agents/agents/testing/vault/     Postman collections, test reports
+~/.agents/agents/calls/vault/       IVR flows, campaign patterns, TTS scripts, TCPA/GDPR compliance
 ~/.agents/agents/gitdevops/vault/   Branch strategy, security scan results
 ~/.agents/agents/mcpbridge/vault/   Contract validation history
 ```

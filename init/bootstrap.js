@@ -38,6 +38,13 @@ const DIRS = [
   'agents/gitdevops/vault/deployment',
   'agents/mcpbridge/vault/integrations',
   'agents/mcpbridge/vault/contracts',
+  'agents/calls/vault/inbound',
+  'agents/calls/vault/outbound',
+  'agents/calls/vault/providers',
+  'agents/calls/vault/compliance',
+  'agents/calls/vault/scripts',
+  'agents/calls/vault/security',
+  'agents/calls/vault/decisions',
   'shared/lib',
   'shared/contracts',
   'shared/standards',
@@ -91,6 +98,34 @@ CREATE INDEX IF NOT EXISTS idx_decisions_session   ON decisions(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_log_session ON session_log(session_id);
 `;
 
+const CALL_TABLES = `
+CREATE TABLE IF NOT EXISTS call_logs (
+  id            TEXT PRIMARY KEY,
+  session_id    TEXT NOT NULL,
+  direction     TEXT NOT NULL,
+  provider      TEXT NOT NULL,
+  phone_number  TEXT NOT NULL,
+  status        TEXT NOT NULL,
+  duration_ms   INTEGER,
+  recording_url TEXT,
+  transcript    TEXT,
+  created_at    INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS campaigns (
+  id              TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  direction       TEXT NOT NULL,
+  provider        TEXT NOT NULL,
+  script_template TEXT,
+  status          TEXT NOT NULL DEFAULT 'draft',
+  created_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_call_logs_session   ON call_logs(session_id);
+CREATE INDEX IF NOT EXISTS idx_call_logs_direction ON call_logs(direction);
+CREATE INDEX IF NOT EXISTS idx_campaigns_session   ON campaigns(session_id);
+`;
+
 const MIGRATION_TABLE = `
 CREATE TABLE IF NOT EXISTS migrations (
   id          TEXT PRIMARY KEY,
@@ -142,7 +177,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id);
 `;
 
 // ─── Create agent knowledge.db files ─────────────────────────────────────────
-const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge'];
+const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls'];
 
 log.info('Creating agent knowledge.db files...');
 AGENT_NAMES.forEach(name => {
@@ -150,6 +185,7 @@ AGENT_NAMES.forEach(name => {
   const db = new Database(dbPath);
   db.exec(COMMON_SCHEMA);
   if (name === 'database') db.exec(MIGRATION_TABLE);
+  if (name === 'calls')    db.exec(CALL_TABLES);
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r => r.name);
   db.close();
   log.ok(`agents/${name}/knowledge.db — [${tables.join(', ')}]`);
@@ -475,6 +511,62 @@ const CONTRACTS = {
       },
       blockedBy: { type: 'array', items: { type: 'string' } },
       errors: { type: 'array', items: { type: 'string' } },
+    },
+  },
+
+  calls: {
+    type: 'object',
+    required: ['sessionId', 'agentName', 'status'],
+    properties: {
+      sessionId:    { type: 'string' },
+      agentName:    { type: 'string', const: 'calls' },
+      status:       { type: 'string', enum: ['completed', 'failed'] },
+      provider:     { type: 'string', enum: ['twilio', 'vonage', 'plivo', 'telnyx'] },
+      callDirection: { type: 'string', enum: ['inbound', 'outbound', 'both'] },
+      webhookRoutes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['method', 'path'],
+          properties: {
+            method:      { type: 'string' },
+            path:        { type: 'string' },
+            handler:     { type: 'string' },
+            description: { type: 'string' },
+            authRequired: { type: 'boolean' },
+          },
+        },
+      },
+      ivrFlow:     { type: ['object', 'null'] },
+      campaignConfig: { type: ['object', 'null'] },
+      voiceScripts: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['id', 'text'],
+          properties: {
+            id:      { type: 'string' },
+            context: { type: 'string' },
+            text:    { type: 'string' },
+            estimatedSeconds: { type: 'number' },
+          },
+        },
+      },
+      complianceChecks: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['rule', 'severity', 'passed'],
+          properties: {
+            rule:     { type: 'string' },
+            severity: { type: 'string', enum: ['blocking', 'warning', 'info'] },
+            passed:   { type: 'boolean' },
+            detail:   { type: 'string' },
+          },
+        },
+      },
+      filesChanged: { type: 'array', items: { type: 'string' } },
+      errors:       { type: 'array', items: { type: 'string' } },
     },
   },
 
