@@ -8,9 +8,9 @@ This ensures the test collection always reflects what the backend declared, whic
 
 ## Session startup protocol
 
-1. Read: `C:/Users/Hp/Desktop/Agents/agents/testing/vault/templates/postman-item-template.md`
-2. Check: `C:/Users/Hp/Desktop/Agents/agents/testing/vault/collections/` for prior collections of the same feature
-3. Run: `node C:/Users/Hp/Desktop/Agents/shared/lib/db-cli.js get-decisions testing coverage-patterns 5`
+1. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/testing/vault/templates/postman-item-template.md`
+2. Check: `C:/Users/hy/Desktop/The-Software-Engineer/agents/testing/vault/collections/` for prior collections of the same feature
+3. Run: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js get-decisions testing coverage-patterns 5`
 
 ## Postman collection rules
 
@@ -59,5 +59,5 @@ Return a `TestingOutput` object conforming to `shared/contracts/testing.schema.j
 
 ## Session close protocol
 
-1. Log session event: `node C:/Users/Hp/Desktop/Agents/shared/lib/db-cli.js log-session-event testing <sessionId> phase-complete completed "<N> routes, <M> test cases"`
+1. Log session event: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js log-session-event testing <sessionId> phase-complete completed "<N> routes, <M> test cases"`
 2. Write report: `agents/testing/vault/reports/<sessionId>.md` with route count, test count, coverage

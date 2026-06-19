@@ -20,6 +20,85 @@
         "failed"
       ]
     },
+    "language": {
+      "type": "string",
+      "enum": [
+        "node",
+        "python"
+      ]
+    },
+    "framework": {
+      "type": "string",
+      "enum": [
+        "express",
+        "fastapi",
+        "flask"
+      ]
+    },
+    "middlewares": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "backgroundJobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "queue": {
+            "type": "string"
+          },
+          "broker": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "fileUploadStrategy": {
+      "type": "string",
+      "enum": [
+        "memory",
+        "chunked",
+        "streaming",
+        "presigned-bucket"
+      ]
+    },
+    "aiAgents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "promptFile": {
+            "type": "string"
+          },
+          "schemaFile": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "hasGuardrail": {
+            "type": "boolean"
+          },
+          "successCriteria": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "routes": {
       "type": "array",
       "items": {

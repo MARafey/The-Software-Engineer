@@ -20,6 +20,31 @@
         "failed"
       ]
     },
+    "aiIntegrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "serviceName"
+        ],
+        "properties": {
+          "serviceName": {
+            "type": "string"
+          },
+          "modelEnvVar": {
+            "type": "string"
+          },
+          "dbAccess": {
+            "type": "string",
+            "enum": [
+              "read-only",
+              "read-write",
+              "none"
+            ]
+          }
+        }
+      }
+    },
     "integrations": {
       "type": "array",
       "items": {

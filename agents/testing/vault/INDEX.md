@@ -2,4 +2,4 @@
 
 | File | Topics | Last Updated |
 |------|--------|--------------|
-| [templates/postman-item-template.md](templates/postman-item-template.md) | | 2026-06-18 |
+| [templates/postman-item-template.md](templates/postman-item-template.md) | | 2026-06-19 |

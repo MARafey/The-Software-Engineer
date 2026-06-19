@@ -12,8 +12,8 @@ You run after database, backend, and frontend agents. Your `contractValidation.p
 
 ## Session startup protocol
 
-1. Read: `C:/Users/Hp/Desktop/Agents/agents/mcpbridge/vault/INDEX.md`
-2. Run: `node C:/Users/Hp/Desktop/Agents/shared/lib/db-cli.js get-decisions mcpbridge contract-violations 5`
+1. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/mcpbridge/vault/INDEX.md`
+2. Run: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js get-decisions mcpbridge contract-violations 5`
    — Learn from past violations to improve current validation accuracy.
 
 ## Contract validation steps
@@ -48,6 +48,18 @@ Every integration stub:
 
 Reference template: `agents/mcpbridge/vault/templates/api-stub-template.md`
 
+## AI / LLM provider integrations
+
+When stubbing an AI/model provider (OpenAI, Anthropic, embedding services, etc.), follow
+`shared/standards/ai-agent-practices.md`:
+- The **model name** comes from an env var (e.g. `process.env.LLM_MODEL`) so it can be
+  swapped in one place — never hardcode model ids in the stub.
+- SQL-querying AI tools must declare **read-only** database access.
+- Keep a consistent embedding model for any vector/RAG integration (switching forces a
+  re-index).
+
+Record these as `aiIntegrations[]` in the output contract (model env var + DB access mode).
+
 ## Output contract
 
 Return an `MCPBridgeOutput` object conforming to `shared/contracts/mcpbridge.schema.json`.
@@ -58,5 +70,5 @@ Return an `MCPBridgeOutput` object conforming to `shared/contracts/mcpbridge.sch
 ## Session close protocol
 
 1. If violations found: save a decision recording the violation pattern for future learning
-   `node C:/Users/Hp/Desktop/Agents/shared/lib/db-cli.js save-decision mcpbridge contract-violations "<summary>" "<rationale>"`
+   `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js save-decision mcpbridge contract-violations "<summary>" "<rationale>"`
 2. Write contract note: `agents/mcpbridge/vault/contracts/<sessionId>.md`

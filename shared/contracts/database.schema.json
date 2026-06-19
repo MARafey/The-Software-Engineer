@@ -20,6 +20,53 @@
         "failed"
       ]
     },
+    "vectorStores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "engine"
+        ],
+        "properties": {
+          "engine": {
+            "type": "string",
+            "enum": [
+              "chroma",
+              "faiss",
+              "opensearch",
+              "elasticsearch"
+            ]
+          },
+          "indexType": {
+            "type": "string",
+            "enum": [
+              "hnsw",
+              "ivf"
+            ]
+          },
+          "dimensions": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "jsonbColumns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string"
+          },
+          "column": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "migrationSQL": {
       "type": "string"
     },

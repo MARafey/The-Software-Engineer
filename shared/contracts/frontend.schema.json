@@ -20,6 +20,43 @@
         "failed"
       ]
     },
+    "language": {
+      "type": "string",
+      "enum": [
+        "javascript",
+        "typescript"
+      ]
+    },
+    "framework": {
+      "type": "string",
+      "enum": [
+        "react-vite",
+        "react",
+        "vanilla"
+      ]
+    },
+    "uiLibrary": {
+      "type": "string",
+      "enum": [
+        "antd",
+        "mui",
+        "none"
+      ]
+    },
+    "serverStateLib": {
+      "type": "string",
+      "enum": [
+        "tanstack-query",
+        "swr",
+        "none"
+      ]
+    },
+    "securityHeaders": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "components": {
       "type": "array",
       "items": {

@@ -20,6 +20,20 @@
         "failed"
       ]
     },
+    "deployment": {
+      "type": "object",
+      "properties": {
+        "containerized": {
+          "type": "boolean"
+        },
+        "imageTag": {
+          "type": "string"
+        },
+        "multiStage": {
+          "type": "boolean"
+        }
+      }
+    },
     "branch": {
       "type": "string"
     },

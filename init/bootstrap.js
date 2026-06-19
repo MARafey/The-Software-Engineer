@@ -17,6 +17,7 @@ const DIRS = [
   'agents/backend/vault/patterns',
   'agents/backend/vault/security',
   'agents/backend/vault/decisions',
+  'agents/frontend/vault/architecture',
   'agents/frontend/vault/design-system',
   'agents/frontend/vault/components',
   'agents/frontend/vault/state-management',
@@ -25,6 +26,8 @@ const DIRS = [
   'agents/database/vault/schemas',
   'agents/database/vault/migrations',
   'agents/database/vault/optimizations',
+  'agents/database/vault/deployment',
+  'agents/database/vault/vector-databases',
   'agents/database/vault/decisions',
   'agents/testing/vault/collections',
   'agents/testing/vault/reports',
@@ -32,6 +35,7 @@ const DIRS = [
   'agents/gitdevops/vault/branch-strategy',
   'agents/gitdevops/vault/security-scans/scan-results',
   'agents/gitdevops/vault/commit-format',
+  'agents/gitdevops/vault/deployment',
   'agents/mcpbridge/vault/integrations',
   'agents/mcpbridge/vault/contracts',
   'shared/lib',
@@ -190,6 +194,36 @@ const CONTRACTS = {
       sessionId: { type: 'string' },
       agentName: { type: 'string', const: 'backend' },
       status: { type: 'string', enum: ['completed', 'failed'] },
+      language: { type: 'string', enum: ['node', 'python'] },
+      framework: { type: 'string', enum: ['express', 'fastapi', 'flask'] },
+      middlewares: { type: 'array', items: { type: 'string' } },
+      backgroundJobs: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            queue: { type: 'string' },
+            broker: { type: 'string' },
+          },
+        },
+      },
+      fileUploadStrategy: { type: 'string', enum: ['memory', 'chunked', 'streaming', 'presigned-bucket'] },
+      aiAgents: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string' },
+            promptFile: { type: 'string' },
+            schemaFile: { type: 'string' },
+            model: { type: 'string' },
+            hasGuardrail: { type: 'boolean' },
+            successCriteria: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
       routes: {
         type: 'array',
         items: {
@@ -231,6 +265,11 @@ const CONTRACTS = {
       sessionId: { type: 'string' },
       agentName: { type: 'string', const: 'frontend' },
       status: { type: 'string', enum: ['completed', 'failed'] },
+      language: { type: 'string', enum: ['javascript', 'typescript'] },
+      framework: { type: 'string', enum: ['react-vite', 'react', 'vanilla'] },
+      uiLibrary: { type: 'string', enum: ['antd', 'mui', 'none'] },
+      serverStateLib: { type: 'string', enum: ['tanstack-query', 'swr', 'none'] },
+      securityHeaders: { type: 'array', items: { type: 'string' } },
       components: {
         type: 'array',
         items: {
@@ -295,6 +334,28 @@ const CONTRACTS = {
       sessionId: { type: 'string' },
       agentName: { type: 'string', const: 'database' },
       status: { type: 'string', enum: ['completed', 'failed'] },
+      vectorStores: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['engine'],
+          properties: {
+            engine: { type: 'string', enum: ['chroma', 'faiss', 'opensearch', 'elasticsearch'] },
+            indexType: { type: 'string', enum: ['hnsw', 'ivf'] },
+            dimensions: { type: ['number', 'null'] },
+          },
+        },
+      },
+      jsonbColumns: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            table: { type: 'string' },
+            column: { type: 'string' },
+          },
+        },
+      },
       migrationSQL: { type: 'string' },
       migrationFile: { type: 'string' },
       tables: {
@@ -387,6 +448,14 @@ const CONTRACTS = {
       sessionId: { type: 'string' },
       agentName: { type: 'string', const: 'gitdevops' },
       status: { type: 'string', enum: ['completed', 'failed'] },
+      deployment: {
+        type: 'object',
+        properties: {
+          containerized: { type: 'boolean' },
+          imageTag: { type: 'string' },
+          multiStage: { type: 'boolean' },
+        },
+      },
       branch: { type: 'string' },
       commitHash: { type: ['string', 'null'] },
       commitMessage: { type: 'string' },
@@ -416,6 +485,18 @@ const CONTRACTS = {
       sessionId: { type: 'string' },
       agentName: { type: 'string', const: 'mcpbridge' },
       status: { type: 'string', enum: ['completed', 'failed'] },
+      aiIntegrations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['serviceName'],
+          properties: {
+            serviceName: { type: 'string' },
+            modelEnvVar: { type: 'string' },
+            dbAccess: { type: 'string', enum: ['read-only', 'read-write', 'none'] },
+          },
+        },
+      },
       integrations: {
         type: 'array',
         items: {

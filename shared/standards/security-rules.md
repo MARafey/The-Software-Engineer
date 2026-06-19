@@ -55,7 +55,29 @@ Rules enforced by the Git/DevOps agent on every commit. Blocking rules prevent t
 
 ## Backend-specific rules
 
-- All user input must be validated before use (Joi, Zod, or equivalent)
+- All user input must be validated before use (Joi, Zod, Pydantic, or equivalent)
 - All SQL uses parameterized queries (no string concatenation)
 - Error responses never include stack traces
-- JWT verified with `jwt.verify()` — never decoded without verification
+- JWT verified with `jwt.verify()` (or equivalent) — never decoded without verification
+
+## Required web security headers
+
+Web servers / backend middleware must inject all of the following on responses:
+
+- `Content-Security-Policy`
+- `Strict-Transport-Security`
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy`
+- `Permissions-Policy`
+
+## Dependency & secret scanning (pre-deployment)
+
+- **Dependency scanning**: run vulnerability checks on third-party packages
+  (`npm audit`, Dependabot) before pushing code.
+- **Secret detection**: scan the codebase for hardcoded credentials, API keys, or
+  certificates before any push to a remote repository.
+- **AI review**: use AI agents to review the commit for security and performance bugs.
+
+See `shared/standards/deployment-guidelines.md` for the full pre-deployment and
+server-hardening checklist.
