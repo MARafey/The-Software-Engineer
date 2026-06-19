@@ -621,7 +621,468 @@ Permissions-Policy: geolocation=(), camera=(), microphone=()
 - Include \`llms.txt\` and \`robots.txt\` at the project root to manage scrapers.
 `);
 
-log.ok('frontend vault seeded');
+// ── 3D design knowledge base ──
+writeNote('frontend', '3d/three-js-scene-setup.md', `# Three.js Scene Setup
+
+## Minimal scene boilerplate
+
+\`\`\`js
+import * as THREE from 'three'
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))  // cap at 2
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1
+renderer.outputColorSpace = THREE.SRGBColorSpace
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+document.body.appendChild(renderer.domElement)
+
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+camera.position.set(0, 2, 5)
+
+// Standard lighting rig
+const ambient = new THREE.AmbientLight(0xffffff, 0.4)
+const sun = new THREE.DirectionalLight(0xffffff, 1.2)
+sun.position.set(5, 10, 5)
+sun.castShadow = true
+sun.shadow.mapSize.setScalar(2048)
+sun.shadow.camera.near = 0.1
+sun.shadow.camera.far = 50
+scene.add(ambient, sun)
+
+// Animation loop
+const clock = new THREE.Clock()
+function animate() {
+  requestAnimationFrame(animate)
+  const delta = clock.getDelta()  // frame-rate independent
+  renderer.render(scene, camera)
+}
+animate()
+
+// Resize handler
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
+})
+\`\`\`
+
+## React Three Fiber equivalent
+
+\`\`\`jsx
+import { Canvas, useFrame } from '@react-three/fiber'
+import { PerspectiveCamera, Environment } from '@react-three/drei'
+
+export function Scene() {
+  return (
+    <Canvas
+      shadows
+      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+      camera={{ position: [0, 2, 5], fov: 75 }}
+    >
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
+      <Environment preset="city" />
+      <MyMesh />
+    </Canvas>
+  )
+}
+\`\`\`
+
+## Dispose pattern (memory management)
+
+Always clean up on component unmount or route change:
+
+\`\`\`js
+function disposeObject(obj) {
+  obj.traverse(child => {
+    if (child.geometry) child.geometry.dispose()
+    if (child.material) {
+      if (Array.isArray(child.material)) child.material.forEach(m => m.dispose())
+      else child.material.dispose()
+    }
+  })
+}
+renderer.dispose()
+\`\`\`
+`);
+
+writeNote('frontend', '3d/physics-engines.md', `# Physics Engine Selection & Setup
+
+## Comparison
+
+| Engine | Size | Accuracy | Best for |
+|--------|------|----------|----------|
+| cannon-es | ~120KB | Good | Simple rigid bodies, joints, vehicles |
+| @dimforge/rapier3d-compat | ~2MB WASM | Excellent | Complex scenes, accurate collisions |
+| ammo.js | ~3MB | Excellent | Bullet port — full feature parity |
+
+## cannon-es setup
+
+\`\`\`js
+import * as CANNON from 'cannon-es'
+
+const world = new CANNON.World({
+  gravity: new CANNON.Vec3(0, -9.82, 0),
+  broadphase: new CANNON.SAPBroadphase(),  // faster than NaiveBroadphase for many bodies
+})
+world.solver.iterations = 10
+
+// Create a box body
+const boxBody = new CANNON.Body({
+  mass: 1,
+  shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)),
+  linearDamping: 0.3,
+})
+boxBody.position.set(0, 5, 0)
+world.addBody(boxBody)
+
+// Sync loop — run before renderer.render()
+world.fixedStep()  // or world.step(1/60, delta)
+mesh.position.copy(boxBody.position)
+mesh.quaternion.copy(boxBody.quaternion)
+\`\`\`
+
+## Rapier setup
+
+\`\`\`js
+import RAPIER from '@dimforge/rapier3d-compat'
+await RAPIER.init()
+
+const world = new RAPIER.World({ x: 0.0, y: -9.81, z: 0.0 })
+const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 5, 0)
+const rigidBody = world.createRigidBody(rigidBodyDesc)
+const colliderDesc = RAPIER.ColliderDesc.ball(0.5)
+world.createCollider(colliderDesc, rigidBody)
+
+// In animation loop
+world.step()
+const pos = rigidBody.translation()
+mesh.position.set(pos.x, pos.y, pos.z)
+\`\`\`
+`);
+
+writeNote('frontend', '3d/scroll-animation.md', `# Scroll-Driven 3D Animation
+
+## Lenis (smooth scroll)
+
+\`\`\`js
+import Lenis from 'lenis'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+gsap.registerPlugin(ScrollTrigger)
+
+const lenis = new Lenis()
+lenis.on('scroll', ScrollTrigger.update)
+gsap.ticker.add((time) => { lenis.raf(time * 1000) })
+gsap.ticker.lagSmoothing(0)
+\`\`\`
+
+## Camera path along a curve
+
+\`\`\`js
+import { CatmullRomCurve3, Vector3, QuaternionKeyframeTrack } from 'three'
+
+const cameraPath = new CatmullRomCurve3([
+  new Vector3(0, 2, 10),
+  new Vector3(5, 3, 5),
+  new Vector3(10, 1, 0),
+], false, 'catmullrom', 0.5)  // tension 0.5 = smooth
+
+// In ScrollTrigger scrub
+ScrollTrigger.create({
+  trigger: '#scroll-container',
+  start: 'top top',
+  end: 'bottom bottom',
+  scrub: 1.5,  // seconds lag for smoothness
+  onUpdate: (self) => {
+    const t = self.progress
+    const point = cameraPath.getPoint(t)
+    const tangent = cameraPath.getTangent(t)
+    camera.position.copy(point)
+    camera.lookAt(point.clone().add(tangent))
+  }
+})
+\`\`\`
+
+## Pinned section with 3D reveal
+
+\`\`\`js
+gsap.timeline({
+  scrollTrigger: {
+    trigger: '#hero-3d',
+    start: 'top top',
+    end: '+=200%',
+    pin: true,
+    scrub: true,
+  }
+})
+.from(mesh.position, { y: -10, duration: 1 })
+.from(mesh.rotation, { y: Math.PI * 2, duration: 1 }, '<')
+\`\`\`
+
+## Object floating animation (idle loop)
+
+\`\`\`js
+// In animation loop
+mesh.position.y = Math.sin(clock.elapsedTime * 0.8) * 0.15
+mesh.rotation.y += delta * 0.3
+\`\`\`
+`);
+
+writeNote('frontend', '3d/shader-cookbook.md', `# GLSL Shader Cookbook
+
+## Minimal ShaderMaterial
+
+\`\`\`js
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    u_time:       { value: 0 },
+    u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+    u_mouse:      { value: new THREE.Vector2(0, 0) },
+  },
+  vertexShader:   vertexShaderSource,
+  fragmentShader: fragmentShaderSource,
+})
+
+// Update in animation loop
+material.uniforms.u_time.value = clock.elapsedTime
+\`\`\`
+
+## Wave displacement vertex shader
+
+\`\`\`glsl
+uniform float u_time;
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  vec3 pos = position;
+  pos.y += sin(pos.x * 3.0 + u_time * 2.0) * 0.1;
+  pos.y += sin(pos.z * 2.5 + u_time * 1.5) * 0.08;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+}
+\`\`\`
+
+## Rim lighting (Fresnel) fragment shader
+
+\`\`\`glsl
+uniform vec3 u_rimColor;
+uniform float u_rimStrength;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+
+void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 viewDir = normalize(vViewPosition);
+  float rim = 1.0 - abs(dot(normal, viewDir));
+  rim = pow(rim, 3.0);
+  vec3 color = mix(vec3(0.1), u_rimColor, rim * u_rimStrength);
+  gl_FragColor = vec4(color, 1.0);
+}
+\`\`\`
+
+## Perlin noise (GLSL, paste inline)
+
+\`\`\`glsl
+// Classic Perlin noise — vec3 → float
+vec3 mod289(vec3 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+float snoise(vec3 v) {
+  const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+  vec3 i  = floor(v + dot(v, C.yyy));
+  vec3 x0 = v - i + dot(i, C.xxx);
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min(g.xyz, l.zxy);
+  vec3 i2 = max(g.xyz, l.zxy);
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - 0.5;
+  i = mod289(i);
+  vec4 p = permute(permute(permute(i.z + vec4(0.0, i1.z, i2.z, 1.0)) + i.y + vec4(0.0, i1.y, i2.y, 1.0)) + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+  vec4 j = p - 49.0 * floor(p * (1.0/49.0));
+  vec4 x_ = floor(j * (1.0/7.0));
+  vec4 ns = 1.0/7.0 * x_ - 1.0;
+  vec4 m = max(0.5 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 105.0 * dot(m*m, vec4(dot(vec3(x_), vec3(x_)), dot(vec3(x1), vec3(x1)), dot(vec3(x2), vec3(x2)), dot(vec3(x3), vec3(x3))));
+}
+\`\`\`
+
+## Post-processing (EffectComposer)
+
+\`\`\`js
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+
+const composer = new EffectComposer(renderer)
+composer.addPass(new RenderPass(scene, camera))
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.3, 0.9))
+
+// Replace renderer.render() in loop with:
+composer.render()
+\`\`\`
+`);
+
+writeNote('frontend', '3d/performance-rules.md', `# 3D Performance Rules
+
+## Draw call budget
+
+Target: < 100 draw calls per frame.
+
+- Merge static geometries: \`BufferGeometryUtils.mergeGeometries([geom1, geom2])\`
+- Instance repeated geometry: \`new THREE.InstancedMesh(geometry, material, count)\`
+- Avoid per-object materials when possible — shared material = one draw call
+
+## Texture rules
+
+| Target | Max size |
+|--------|----------|
+| Mobile | 1024×1024 |
+| Desktop | 2048×2048 |
+| Hero asset (desktop-only) | 4096×4096 |
+
+- Always power-of-two dimensions
+- Use KTX2 (Basis Universal) for web delivery: \`ktx2-encoder\` CLI
+- Mipmaps: enabled by default — only disable for UI plane textures
+
+## Instancing (InstancedMesh)
+
+\`\`\`js
+const count = 1000
+const mesh = new THREE.InstancedMesh(geometry, material, count)
+const matrix = new THREE.Matrix4()
+for (let i = 0; i < count; i++) {
+  matrix.setPosition(Math.random() * 20 - 10, 0, Math.random() * 20 - 10)
+  mesh.setMatrixAt(i, matrix)
+}
+mesh.instanceMatrix.needsUpdate = true
+scene.add(mesh)
+\`\`\`
+
+## Memory disposal checklist
+
+- \`geometry.dispose()\`
+- \`material.dispose()\`
+- \`texture.dispose()\`
+- \`renderer.dispose()\`
+- Remove object from scene: \`scene.remove(obj)\`
+- Cancel animation: \`cancelAnimationFrame(rafId)\`
+
+## Avoid per-frame allocations
+
+\`\`\`js
+// BAD — creates new Vector3 every frame
+camera.lookAt(new THREE.Vector3(0, 0, 0))
+
+// GOOD — reuse instance
+const _target = new THREE.Vector3(0, 0, 0)
+camera.lookAt(_target)
+\`\`\`
+
+## Stats.js (dev only)
+
+\`\`\`js
+import Stats from 'stats.js'
+const stats = new Stats()
+stats.showPanel(0)  // 0: fps, 1: ms, 2: mb
+document.body.appendChild(stats.dom)
+// In loop: stats.begin() ... stats.end()
+\`\`\`
+`);
+
+writeNote('frontend', '3d/math-reference.md', `# 3D Math Reference
+
+## Easing functions
+
+\`\`\`js
+// Ease out cubic
+const easeOut = t => 1 - Math.pow(1 - t, 3)
+
+// Ease in-out sine
+const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2
+
+// Spring (critically damped) — call each frame
+function spring(current, target, velocity, stiffness = 150, damping = 20, dt = 1/60) {
+  const force = -stiffness * (current - target) - damping * velocity
+  velocity += force * dt
+  current  += velocity * dt
+  return { current, velocity }
+}
+\`\`\`
+
+## Quaternion interpolation (smooth camera rotation)
+
+\`\`\`js
+const qA = new THREE.Quaternion()
+const qB = new THREE.Quaternion()
+camera.quaternion.slerp(qB, 0.05)  // 0.05 = smooth factor (lower = smoother)
+
+// Look-at as quaternion
+const dummy = new THREE.Object3D()
+dummy.position.copy(camera.position)
+dummy.lookAt(targetPosition)
+camera.quaternion.slerp(dummy.quaternion, lerpFactor)
+\`\`\`
+
+## Lerp / Damp (smooth position follow)
+
+\`\`\`js
+// Linear lerp — not frame-rate independent
+pos.lerp(target, 0.1)
+
+// Frame-rate independent damp (prefer this)
+import { damp } from 'maath/easing'
+damp(camera.position, 'y', targetY, 0.3, delta)  // 0.3 = smoothing time
+\`\`\`
+
+## Raycaster (mouse picking)
+
+\`\`\`js
+const raycaster = new THREE.Raycaster()
+const mouse = new THREE.Vector2()
+
+window.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth)  * 2 - 1
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1
+})
+
+// In animation loop
+raycaster.setFromCamera(mouse, camera)
+const hits = raycaster.intersectObjects(scene.children, true)
+if (hits.length > 0) {
+  const first = hits[0].object
+  // highlight first
+}
+\`\`\`
+
+## CatmullRom camera path
+
+\`\`\`js
+const path = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(-10, 2, 10),
+  new THREE.Vector3(0, 5, 0),
+  new THREE.Vector3(10, 2, -10),
+], false, 'catmullrom', 0.5)
+
+// Get point at scroll progress t ∈ [0,1]
+const t = scrollProgress
+const point = path.getPoint(t)
+const tangent = path.getTangent(t)
+camera.position.copy(point)
+camera.lookAt(point.clone().add(tangent.multiplyScalar(3)))
+\`\`\`
+`);
+
+log.ok('frontend vault seeded (including 3D knowledge base)');
 
 // ─── Database vault ───────────────────────────────────────────────────────────
 writeNote('database', 'optimizations/index-guidelines.md', `# Index Guidelines

@@ -1,9 +1,10 @@
 export const meta = {
   name: 'frontend',
-  description: 'Frontend domain agent — UI design, components, API wiring, security checks',
+  description: 'Frontend domain agent — UI design, 3D scenes, components, API wiring, security checks',
   phases: [
     { title: 'Load Context', detail: 'Read storage rules, security rules, prior decisions' },
     { title: 'UI Design', detail: 'ui-designer defines layout and design system usage' },
+    { title: '3D Design', detail: '3d-designer architects scene, physics, shaders, scroll animation', model: 'claude-opus-4-8' },
     { title: 'Components', detail: 'component-creator builds component files' },
     { title: 'API Wiring', detail: 'api-request-handler wires components to backend contracts' },
     { title: 'Security Check', detail: 'security-checker audits token placement, CSP, storage' },
@@ -26,6 +27,13 @@ const designBrief = designPreferences ? [
   designPreferences.mobile != null ? `Mobile-friendly: ${designPreferences.mobile}` : null,
   designPreferences.displayStyle  ? `Display style: ${designPreferences.displayStyle}` : null,
 ].filter(Boolean).join('. ') : 'Match the existing design system in the project.'
+
+// Detect if task requires 3D design work
+const use3D = (designPreferences && designPreferences.use3D === true)
+  || /\b(3d|three\.?js|threejs|webgl|glsl|shader|immersive|particle[s]?|scroll.{0,8}anim|canvas.{0,8}anim|geometry|instanc|raycaster|three.dimension|3-d\b)/i.test(taskText)
+
+const physicsHint      = designPreferences && designPreferences.usePhysics      != null ? `User requested physics: ${designPreferences.usePhysics ? 'YES — include rigid-body physics' : 'NO — skip physics'}.` : ''
+const scrollAnimHint   = designPreferences && designPreferences.useScrollAnimation != null ? `User requested scroll animation: ${designPreferences.useScrollAnimation ? 'YES — include scroll-driven camera path' : 'NO — skip scroll animation'}.` : ''
 
 // ─── Phase: Load Context ─────────────────────────────────────────────────────
 phase('Load Context')
@@ -88,6 +96,141 @@ const uiDesign = await agent(
 
 log(`Designed ${uiDesign.pages.length} page/component(s)`)
 
+// ─── Phase: 3D Design (conditional — only when task involves 3D) ──────────────
+let threeDDesign = null
+if (use3D) {
+  phase('3D Design')
+  log('3D task detected — invoking 3D design expert (Opus model)...')
+  threeDDesign = await agent(
+    `You are the 3d-designer sub-agent of the Frontend Agent. You are a world-class expert in 3D web development — Three.js, WebGL, GLSL shaders, physics engines, scroll-driven animation, and GPU performance optimization.\n\n` +
+    `Task: "${taskText}"\n` +
+    `Project: ${projectPath}\n\n` +
+    `USER DESIGN PREFERENCES:\n${designBrief}\n` +
+    (physicsHint    ? `${physicsHint}\n` : '') +
+    (scrollAnimHint ? `${scrollAnimHint}\n` : '') +
+    `\nExamine the project at ${projectPath} to understand the existing tech stack before making library choices.\n\n` +
+    `Design the complete 3D web experience. Cover ALL of the following sections:\n\n` +
+
+    `1. LIBRARY SELECTION — choose the best fit for this project's stack:\n` +
+    `   - three.js: maximum control, raw WebGL power, largest ecosystem\n` +
+    `   - @react-three/fiber (R3F) + @react-three/drei: if the project uses React — declarative Three.js with hooks\n` +
+    `   - babylon.js: superior built-in physics, game-first, full inspector\n` +
+    `   Match the project's existing framework. R3F for React, raw Three.js for Vanilla/Vue/Svelte.\n\n` +
+
+    `2. SCENE ARCHITECTURE:\n` +
+    `   - Renderer: WebGLRenderer({ antialias, alpha }), toneMapping (ACESFilmicToneMapping), outputColorSpace (SRGBColorSpace), pixelRatio capped at Math.min(devicePixelRatio, 2)\n` +
+    `   - Camera: PerspectiveCamera(fov, aspect, near=0.1, far=1000) or OrthographicCamera; position, lookAt target\n` +
+    `   - Lighting rig: AmbientLight (low intensity base) + DirectionalLight (shadow caster) + HemisphereLight (sky/ground tones for outdoors)\n` +
+    `   - Shadows: renderer.shadowMap.enabled = true, PCFSoftShadowMap; only key shadow-casters receive/cast\n` +
+    `   - Environment: CubeCamera env map or HDR equirectangular (RGBELoader) for reflections\n` +
+    `   - Fog: FogExp2 for exponential atmospheric depth\n\n` +
+
+    `3. 3D OBJECTS — for each significant object:\n` +
+    `   - Geometry: exact BufferGeometry constructor and segment counts (use minimum that looks correct)\n` +
+    `   - Material: MeshStandardMaterial (PBR default), MeshPhysicalMaterial (clearcoat/SSS), ShaderMaterial (custom)\n` +
+    `   - Textures: TextureLoader + KTX2Loader (compressed) for production; list which maps (diffuse, normal, roughness, metalness, AO)\n` +
+    `   - LOD: THREE.LOD() with distance thresholds when objects appear at varying distances\n` +
+    `   - Instancing: InstancedMesh when geometry is repeated > 20 times (particles, crowds, trees)\n` +
+    `   - GLTF: GLTFLoader + DRACOLoader for external mesh files\n\n` +
+
+    `4. PHYSICS ENGINE (include only if objects need collision, gravity, or rigid-body dynamics):\n` +
+    `   - cannon-es: lightweight, pure JS, ideal for simple rigid bodies and joints\n` +
+    `   - @dimforge/rapier3d-compat: WASM-based, fastest and most accurate, best for complex scenes\n` +
+    `   - ammo.js: full Bullet port, heaviest but most feature-complete\n` +
+    `   Design the physics world: gravity vector, broadphase (NaiveBroadphase vs SAPBroadphase), solver iterations\n` +
+    `   For each physics body: shape (Box/Sphere/ConvexPolyhedron/Trimesh), mass, restitution, friction, linearDamping\n` +
+    `   Sync loop: on each animation frame, copy physics body positions → Three.js mesh transforms\n\n` +
+
+    `5. SCROLL ANIMATION (include only if scroll-driven camera or parallax motion is needed):\n` +
+    `   - Lenis: smooth momentum scrolling (replaces native scroll, emits scroll events)\n` +
+    `   - GSAP ScrollTrigger: pin sections, scrub-linked timelines (gsap.timeline + scrollTrigger.scrub), snap points\n` +
+    `   - Camera path: THREE.CatmullRomCurve3 or CubicBezierCurve3; map scroll progress t∈[0,1] to curve.getPoint(t)\n` +
+    `   - Quaternion slerp for smooth camera rotation along path: quaternion.slerp(targetQ, smoothingFactor)\n` +
+    `   - Object reveals: stagger entry animations triggered by scroll position\n\n` +
+
+    `6. ANIMATION & MOTION DESIGN:\n` +
+    `   - requestAnimationFrame loop with THREE.Clock and clock.getDelta() for frame-rate independence\n` +
+    `   - Spring physics for organic feel: critically-damped spring (damping=0.8, stiffness=150)\n` +
+    `   - GSAP eases: 'power2.out', 'expo.out', 'elastic.out(1,0.4)', custom cubic-bezier\n` +
+    `   - Hover interaction: Raycaster + pointer events, cursor CSS change, object highlight on intersect\n` +
+    `   - GSAP timeline for intro/outro sequences\n` +
+    `   - Floating animation: Math.sin(elapsedTime * frequency) * amplitude on Y axis\n\n` +
+
+    `7. CUSTOM SHADERS (include only when standard materials are insufficient):\n` +
+    `   - Vertex shader: wave displacement via noise, morph between shapes, outline pass vertex expansion\n` +
+    `   - Fragment shader: custom color ramps, rim lighting (Fresnel), iridescence, dissolve/burn effect\n` +
+    `   - Uniforms: u_time (float, increment in loop), u_resolution (vec2), u_mouse (vec2 normalized)\n` +
+    `   - Noise: Simplex/Perlin noise functions — paste canonical GLSL noise inline or import glsl-noise\n` +
+    `   - Post-processing (EffectComposer): bloom (UnrealBloomPass), SSAO (SSAOPass), film grain (FilmPass)\n\n` +
+
+    `8. PERFORMANCE RULES (must follow — 3D is GPU-intensive):\n` +
+    `   - Draw call budget: < 100 draw calls total; merge static geometries with BufferGeometryUtils.mergeBufferGeometries()\n` +
+    `   - Texture size: power-of-two dimensions; max 2048×2048 for mobile, 4096 only for desktop hero assets\n` +
+    `   - Texture compression: KTX2 (Basis Universal) for web delivery\n` +
+    `   - Frustum culling: object.frustumCulled = true (Three.js default — do not disable)\n` +
+    `   - Memory disposal: geometry.dispose(), material.dispose(), texture.dispose() in cleanup/unmount\n` +
+    `   - Stats.js (dev only): monitor FPS, memory, render time\n` +
+    `   - Avoid per-frame object creation — reuse Vector3/Quaternion instances\n\n` +
+
+    `9. FILE STRUCTURE TO CREATE:\n` +
+    `   src/3d/scene.js          — WebGLRenderer, PerspectiveCamera, scene graph, animation loop\n` +
+    `   src/3d/objects/<name>.js — one file per significant 3D object group\n` +
+    `   src/3d/shaders/          — .glsl files (or JS template literals) per shader\n` +
+    `   src/3d/physics.js        — physics world + body definitions (only if physics used)\n` +
+    `   src/3d/scroll.js         — Lenis init + ScrollTrigger scenes (only if scroll used)\n` +
+    `   src/3d/utils/dispose.js  — cleanup utility for Three.js resources\n\n` +
+
+    `Return JSON with all fields populated:\n` +
+    `{\n` +
+    `  library: "three.js"|"r3f"|"babylon.js",\n` +
+    `  physicsEngine: "cannon-es"|"rapier"|"ammo.js"|"none",\n` +
+    `  scrollLibrary: "lenis+gsap-scrolltrigger"|"gsap-scrolltrigger"|"none",\n` +
+    `  sceneConfig: { cameraType, fov, rendererOptions, lighting: [string], shadows, environment, fog },\n` +
+    `  objects: [{ name, geometry, material, hasTextures, instanced, usesLOD, hasPhysicsBody, physicsShape }],\n` +
+    `  animations: [{ name, type: "scroll"|"hover"|"idle"|"intro", easing, duration, trigger }],\n` +
+    `  shaders: [{ name, purpose, uniforms: [string], vertexDisplacement: boolean, postProcessing: boolean }],\n` +
+    `  performanceNotes: [string],\n` +
+    `  codeFiles: [string],\n` +
+    `  installPackages: [string]\n` +
+    `}`,
+    {
+      label: '3d-designer',
+      phase: '3D Design',
+      model: 'claude-opus-4-8',
+      schema: {
+        type: 'object',
+        required: ['library', 'physicsEngine', 'scrollLibrary', 'sceneConfig', 'objects', 'animations', 'shaders', 'performanceNotes', 'codeFiles', 'installPackages'],
+        properties: {
+          library:          { type: 'string' },
+          physicsEngine:    { type: 'string' },
+          scrollLibrary:    { type: 'string' },
+          sceneConfig:      { type: 'object' },
+          objects:          { type: 'array' },
+          animations:       { type: 'array' },
+          shaders:          { type: 'array' },
+          performanceNotes: { type: 'array', items: { type: 'string' } },
+          codeFiles:        { type: 'array', items: { type: 'string' } },
+          installPackages:  { type: 'array', items: { type: 'string' } },
+        },
+      },
+    }
+  )
+  log(`3D: ${threeDDesign.library}, physics=${threeDDesign.physicsEngine}, scroll=${threeDDesign.scrollLibrary}, ${threeDDesign.objects.length} obj, ${threeDDesign.shaders.length} shader(s)`)
+}
+
+// Build 3D context string to pass into component-creator
+const threeDContext = threeDDesign
+  ? `\n\n3D SCENE DESIGN (from 3d-designer — implement these exactly):\n` +
+    `Library: ${threeDDesign.library} | Physics: ${threeDDesign.physicsEngine} | Scroll: ${threeDDesign.scrollLibrary}\n` +
+    `Scene config: ${JSON.stringify(threeDDesign.sceneConfig)}\n` +
+    `Objects: ${JSON.stringify(threeDDesign.objects)}\n` +
+    `Animations: ${JSON.stringify(threeDDesign.animations)}\n` +
+    `Shaders: ${JSON.stringify(threeDDesign.shaders)}\n` +
+    `Files to create: ${threeDDesign.codeFiles.join(', ')}\n` +
+    `Install before coding: npm install ${threeDDesign.installPackages.join(' ')}\n` +
+    `Performance rules (mandatory): ${threeDDesign.performanceNotes.join('; ')}`
+  : ''
+
 // ─── Phase: Components ────────────────────────────────────────────────────────
 phase('Components')
 
@@ -101,7 +244,8 @@ const components = await agent(
   `- All API calls go in src/api/<feature>.api.js — never inline in JSX\n` +
   `- Components import from the api file, never use fetch/axios directly\n` +
   `- Use design tokens (CSS custom properties) — no hardcoded colors\n` +
-  `- Include loading, empty, and error states in every data-fetching component\n\n` +
+  `- Include loading, empty, and error states in every data-fetching component\n` +
+  `${threeDContext}\n\n` +
   `Return JSON: { components: [{name,filePath,type,usesAPI:[routePath]}], apiFiles: [string], filesCreated: [string] }`,
   {
     label: 'component-creator',
@@ -209,5 +353,6 @@ return {
   apiBindings:  wiring.apiBindings,
   securityFlags: security.securityFlags,
   filesChanged: allFiles,
+  threeDDesign: threeDDesign || null,
   errors:       errorFlags.map(f => `${f.location}: ${f.message}`),
 }

@@ -134,6 +134,10 @@ Only ask questions relevant to the domains you detected above. Group all questio
 > - A) Cards (tiles, grid layout)
 > - B) Table (rows and columns)
 > - C) Simple list
+>
+> **3D / Immersive:** Does this feature need any 3D elements, animated scenes, particle effects, scroll-driven camera movement, or custom shaders? (yes / no)
+> - If yes: Should objects respond to physics — falling, colliding, bouncing? (yes / no)
+> - If yes: Is there scroll-driven animation — camera flying through a scene as you scroll? (yes / no)
 
 If the project was already onboarded and has an established design system, skip questions whose answers are already known and just confirm: _"I'll match the existing design: [describe what was found]."_
 
@@ -209,7 +213,10 @@ Workflow({
         colors: "<hex codes or 'default' or null>",
         navigation: "<'top-bar'|'side-menu'|'none'|null>",
         mobile: <true|false|null>,
-        displayStyle: "<'cards'|'table'|'list'|null>"
+        displayStyle: "<'cards'|'table'|'list'|null>",
+        use3D: <true|false|null>,
+        usePhysics: <true|false|null>,
+        useScrollAnimation: <true|false|null>
       },
       archPreferences: {
         authMethod: "<'jwt'|'sessions'|'api-keys'|'none'|null>",
@@ -346,7 +353,7 @@ Examples:
 |-------|-------------|----------------|
 | **Database** | Writes migration SQL, checks foreign keys, adds indexes | table-creator, schema-validator, query-optimizer |
 | **Backend** | Creates routes, controllers, services with documentation | flow-planner, route-creator, code-standards, folder-structure |
-| **Frontend** | Builds components, wires API calls, enforces security rules | ui-designer, component-creator, api-wirer, security-checker |
+| **Frontend** | Builds components, wires API calls, enforces security rules. For 3D tasks: designs Three.js/WebGL scene, physics, shaders, and scroll animation using Opus model | ui-designer, 3d-designer (Opus), component-creator, api-wirer, security-checker |
 | **Testing** | Generates Postman tests (success case, error case, auth case per route) | — |
 | **Bridge** | Checks that frontend and backend are talking to each other correctly | — |
 | **Git** | Runs 10 security checks, creates branch, writes structured commit | — |
