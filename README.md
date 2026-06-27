@@ -1,6 +1,6 @@
 # Software Engineer
 
-A multi-agent Claude Code skill that automates the full software development lifecycle.
+A multi-agent system that automates the full software development lifecycle — as a **Claude Code plugin** (the `/software-engineer` command) and as a **cross-IDE MCP server** (Cursor, Windsurf, VS Code, and other MCP editors).
 
 One command. Every agent runs in sequence — database schema, backend routes, frontend components, Postman tests, inbound/outbound call systems, security scan, git commit. Each agent has its own SQLite knowledge base and Obsidian vault that grows smarter with every session.
 
@@ -38,12 +38,28 @@ That's it. Run `/software-engineer` — on first use it clones this repo to `~/.
 
 Other commands:
 ```
-/software-engineer test         — run 35 health checks, verify install is working (no files modified)
+/software-engineer test         — run 42 health checks, verify install is working (no files modified)
 /software-engineer onboard      — force re-scan of current project (auto-runs on first use)
 /software-engineer status       — show recent sessions
 /software-engineer update       — pull latest version
 /software-engineer help         — show all commands
 ```
+
+---
+
+## Other editors (Cursor, Windsurf, VS Code) — MCP server
+
+Not on Claude Code? The same orchestrator is exposed as an MCP server, so any MCP-capable editor can use it. After the engine is set up (clone + `npm run init` — see *How it works internally*), point the editor at `node ~/.agents/mcp/server.mjs`:
+
+```json
+{
+  "mcpServers": {
+    "software-engineer": { "command": "node", "args": ["~/.agents/mcp/server.mjs"] }
+  }
+}
+```
+
+Tools: `software_engineer_health`, `software_engineer_classify`, and `software_engineer_orchestrate` (plan by default; pass `apply: true` to write files). Reasoning uses the host's model via MCP sampling, or `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` when sampling isn't available — no keys are bundled. Per-editor setup in [`mcp/README.md`](mcp/README.md).
 
 ---
 
@@ -65,7 +81,7 @@ If you share a mockup image or screenshot, it reads it and only asks about the p
 
 **First use on any project:** the system automatically scans your entire codebase before doing anything — routes, components, schema, conventions, security posture. This runs once per project and is stored in the agent knowledge bases. Every future session starts with that context already loaded.
 
-Six agents then run in dependency order:
+Seven agents then run in dependency order:
 
 ```
 [onboard — first use only] → database → backend → frontend + testing + calls (parallel) → bridge → git
@@ -74,8 +90,8 @@ Six agents then run in dependency order:
 | Agent | Does |
 |-------|------|
 | **Database** | Writes migration SQL, validates foreign keys, adds indexes |
-| **Backend** | Creates Express routes, controllers, services with JSDoc |
-| **Frontend** | Builds components, wires API calls, enforces token/storage rules. 3D tasks invoke Opus for scene/physics/shader design |
+| **Backend** | A *data-architect* first plans lean data access — a single shared DB pool, disciplined AI queries (read-only, `LIMIT` + filters, no `SELECT *`), caching/lookup tables — then routes, controllers, services with JSDoc |
+| **Frontend** | Builds components, wires API calls, enforces token/storage rules. Dedicated *layout / positioning / contrast* specialists handle complex parent-child CSS. 3D tasks invoke Opus for scene/physics/shader design |
 | **Testing** | Generates Postman collection (positive + negative + auth tests per route) |
 | **Calls** | Inbound IVR flows, outbound dialing campaigns, Twilio/Vonage webhooks, TTS scripts, TCPA/GDPR/DNC compliance |
 | **Bridge** | Validates that frontend bindings and telephony webhooks match backend contracts |
@@ -140,7 +156,7 @@ Open Obsidian's Graph View to see the agents and their contract flow as a live m
 You install the plugin once (see above). Everything else is handled automatically:
 
 1. First `/software-engineer` invocation → skill clones this repo to `~/.agents/`
-2. `npm install` fetches `better-sqlite3`, `uuid`, `chalk`, `ajv`
+2. `npm install` fetches `better-sqlite3`, `uuid`, `chalk`, `ajv`, `@modelcontextprotocol/sdk`
 3. `node init/bootstrap.js` creates all SQLite databases and contract schemas
 4. `node init/seed-vaults.js` writes the initial Obsidian vault notes
 5. All future runs go straight to the orchestration workflow
@@ -157,5 +173,5 @@ The agents communicate through typed JSON contracts validated against JSON Schem
 
 Or manually:
 ```bash
-cd ~/.agents && git pull origin main && npm install && node init/bootstrap.js && node init/verify.js
+cd ~/.agents && git pull origin master && npm install && node init/bootstrap.js && node init/verify.js
 ```
