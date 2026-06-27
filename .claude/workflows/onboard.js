@@ -13,7 +13,7 @@ export const meta = {
 }
 
 // args: { sessionId, projectPath, agentsDir }
-const AGENTS_DIR  = (args && args.agentsDir)    || 'C:/Users/Hp/Desktop/Agents'
+const AGENTS_DIR  = (args && args.agentsDir)    || 'C:/Users/Hp/Desktop/Ideas/Agents'
 const projectPath = (args && args.projectPath)  || ''
 const sessionId   = (args && args.sessionId)    || 'onboard'
 

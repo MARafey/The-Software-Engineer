@@ -12,8 +12,14 @@ export const meta = {
   ],
 }
 
-// args: { task: string, projectPath: string, clarifications?: { designPreferences, archPreferences, dbPreferences, callPreferences } }
-const AGENTS_DIR      = 'C:/Users/Hp/Desktop/Agents'
+// args: { task, projectPath, agentsDir?, clarifications?: { designPreferences, archPreferences, dbPreferences, callPreferences } }
+//
+// Model policy (orchestrator = main model, sub-agents = cheaper):
+//   - Orchestrator-level reasoning (task classification) runs on the host's main/default model.
+//   - Mechanical command-runner agents (session init, onboard check, status updates) run on 'haiku'.
+//   - Domain sub-workflows pick their own per-phase model (e.g. frontend 3D design uses Opus).
+// Sub-agents always use whatever models the host IDE provides — no API keys, no local Ollama.
+const AGENTS_DIR      = (args && args.agentsDir) || 'C:/Users/Hp/Desktop/Ideas/Agents'
 const taskText        = (args && args.task)           || ''
 const projectPath     = (args && args.projectPath)    || ''
 const clarifications  = (args && args.clarifications) || {}
@@ -28,6 +34,7 @@ const sessionResult = await agent(
   `Return that JSON object.`,
   {
     label: 'init-session',
+    model: 'haiku',
     schema: {
       type: 'object',
       required: ['sessionId', 'startedAt'],
@@ -52,6 +59,7 @@ if (!isOnboardTask && projectPath) {
     `The command prints JSON. Return it as-is.`,
     {
       label: 'check-onboarded',
+      model: 'haiku',
       schema: {
         type: 'object',
         required: ['onboarded'],
@@ -119,7 +127,7 @@ if (classification.requiresDatabase) {
   phase('Database')
   databaseOutput = await workflow(
     { scriptPath: `${AGENTS_DIR}/.claude/workflows/database.js` },
-    { sessionId, taskText, projectPath, dbPreferences: clarifications.dbPreferences || null }
+    { agentsDir: AGENTS_DIR, sessionId, taskText, projectPath, dbPreferences: clarifications.dbPreferences || null }
   )
   log(`database → ${databaseOutput && databaseOutput.status}`)
 }
@@ -129,7 +137,7 @@ if (classification.requiresBackend) {
   phase('Backend')
   backendOutput = await workflow(
     { scriptPath: `${AGENTS_DIR}/.claude/workflows/backend.js` },
-    { sessionId, taskText, projectPath, databaseOutput, archPreferences: clarifications.archPreferences || null }
+    { agentsDir: AGENTS_DIR, sessionId, taskText, projectPath, databaseOutput, archPreferences: clarifications.archPreferences || null }
   )
   log(`backend → ${backendOutput && backendOutput.status}`)
 }
@@ -142,21 +150,21 @@ phase('Frontend + Testing + Calls')
   if (classification.requiresFrontend && backendOutput) {
     parallelTasks.push(() => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/frontend.js` },
-      { sessionId, taskText, projectPath, backendOutput, designPreferences: clarifications.designPreferences || null }
+      { agentsDir: AGENTS_DIR, sessionId, taskText, projectPath, backendOutput, designPreferences: clarifications.designPreferences || null }
     ))
   }
 
   if (backendOutput) {
     parallelTasks.push(() => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/testing.js` },
-      { sessionId, taskText, projectPath, backendOutput }
+      { agentsDir: AGENTS_DIR, sessionId, taskText, projectPath, backendOutput }
     ))
   }
 
   if (classification.requiresCalls) {
     parallelTasks.push(() => workflow(
       { scriptPath: `${AGENTS_DIR}/.claude/workflows/calls.js` },
-      { sessionId, taskText, projectPath, backendOutput, databaseOutput, callPreferences: clarifications.callPreferences || null }
+      { agentsDir: AGENTS_DIR, sessionId, taskText, projectPath, backendOutput, databaseOutput, callPreferences: clarifications.callPreferences || null }
     ))
   }
 
@@ -174,7 +182,7 @@ phase('Frontend + Testing + Calls')
 phase('Bridge')
 bridgeOutput = await workflow(
   { scriptPath: `${AGENTS_DIR}/.claude/workflows/mcpbridge.js` },
-  { sessionId, taskText, projectPath, backendOutput, frontendOutput, databaseOutput, callsOutput }
+  { agentsDir: AGENTS_DIR, sessionId, taskText, projectPath, backendOutput, frontendOutput, databaseOutput, callsOutput }
 )
 const bridgePassed = bridgeOutput && bridgeOutput.contractValidation && bridgeOutput.contractValidation.passed
 log(`bridge → passed=${bridgePassed}`)
@@ -184,7 +192,7 @@ if (!bridgePassed) {
   log(`BLOCKED by ${violations.length} contract violation(s)`)
   await agent(
     `Mark this session as failed. Run:\n\ncd "${AGENTS_DIR}"; node shared/lib/db-cli.js update-session-status "${sessionId}" "failed"\n\nReturn "done".`,
-    { label: 'session-failed' }
+    { label: 'session-failed', model: 'haiku' }
   )
   return {
     sessionId,
@@ -199,6 +207,7 @@ phase('Git')
 gitOutput = await workflow(
   { scriptPath: `${AGENTS_DIR}/.claude/workflows/gitdevops.js` },
   {
+    agentsDir: AGENTS_DIR,
     sessionId,
     taskText,
     projectPath,
@@ -216,7 +225,7 @@ log(`git → ${gitOutput && gitOutput.status} branch=${gitOutput && gitOutput.br
 const finalStatus = gitOutput && gitOutput.status === 'completed' ? 'completed' : 'failed'
 await agent(
   `Mark this session as ${finalStatus}. Run:\n\ncd "${AGENTS_DIR}"; node shared/lib/db-cli.js update-session-status "${sessionId}" "${finalStatus}"\n\nReturn "done".`,
-  { label: 'session-final' }
+  { label: 'session-final', model: 'haiku' }
 )
 
 return {

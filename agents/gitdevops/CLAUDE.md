@@ -13,12 +13,12 @@ Deployment references: `deployment/docker.md`, `deployment/server-hardening.md`,
 
 ## Session startup protocol
 
-1. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/gitdevops/vault/security-scans/checklist.md`
-2. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/gitdevops/vault/security-scans/dependency-and-secret-scan.md`
-3. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/gitdevops/vault/commit-format/examples.md`
-4. Read: `C:/Users/hy/Desktop/The-Software-Engineer/shared/standards/commit-format.md`
+1. Read: `~/.agents/agents/gitdevops/vault/security-scans/checklist.md`
+2. Read: `~/.agents/agents/gitdevops/vault/security-scans/dependency-and-secret-scan.md`
+3. Read: `~/.agents/agents/gitdevops/vault/commit-format/examples.md`
+4. Read: `~/.agents/shared/standards/commit-format.md`
 5. For deployment/containerization tasks, read the `deployment/*` notes and
-   `C:/Users/hy/Desktop/The-Software-Engineer/shared/standards/deployment-guidelines.md`.
+   `~/.agents/shared/standards/deployment-guidelines.md`.
 6. Confirm that the MCP Bridge output has `contractValidation.passed === true` — if not, STOP.
 
 ## Pre-commit security scan (blocking)
@@ -94,4 +94,4 @@ Return a `GitDevOpsOutput` object conforming to `shared/contracts/gitdevops.sche
 ## Session close protocol
 
 1. Save scan results: write to `agents/gitdevops/vault/security-scans/scan-results/<sessionId>.md`
-2. Log agent run: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js log-agent-run <sessionId> gitdevops <status> '<outputJson>'`
+2. Log agent run: `node ~/.agents/shared/lib/db-cli.js log-agent-run <sessionId> gitdevops <status> '<outputJson>'`

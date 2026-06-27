@@ -6,19 +6,18 @@ One command. Every agent runs in sequence — database schema, backend routes, f
 
 ---
 
-## Install (one command)
+## Install
 
-**Windows (PowerShell):**
-```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null; Invoke-WebRequest -Uri "https://raw.githubusercontent.com/MARafey/The-Software-Engineer/main/skill.md" -OutFile "$env:USERPROFILE\.claude\skills\software-engineer.md"
+In Claude Code, register this repo as a plugin marketplace, then install the plugin:
+
+```
+/plugin marketplace add MARafey/The-Software-Engineer
+/plugin install software-engineer@software-engineer
 ```
 
-**macOS/Linux:**
-```bash
-mkdir -p ~/.claude/skills && curl -o ~/.claude/skills/software-engineer.md https://raw.githubusercontent.com/MARafey/The-Software-Engineer/main/skill.md
-```
+That's it. Run `/software-engineer` — on first use it clones this repo to `~/.agents`, installs dependencies, and seeds the knowledge bases automatically.
 
-That's it. Open Claude Code and run `/software-engineer` — it clones this repo and sets up everything automatically on first use.
+> Why a plugin and not a loose file? Claude Code only loads skills that live in a folder as `skills/<name>/SKILL.md`. Dropping a single `software-engineer.md` into `~/.claude/skills/` will **not** register the slash command — the plugin packaging is what makes `/software-engineer` appear.
 
 ---
 
@@ -124,7 +123,7 @@ Each agent builds up its own Obsidian-compatible knowledge vault at `~/.agents/a
 
 ## How it works internally
 
-The skill file (`skill.md`) is the only file you install manually. Everything else is handled automatically:
+You install the plugin once (see above). Everything else is handled automatically:
 
 1. First `/software-engineer` invocation → skill clones this repo to `~/.agents/`
 2. `npm install` fetches `better-sqlite3`, `uuid`, `chalk`, `ajv`

@@ -23,16 +23,16 @@ You never work on frontend components, database migrations, or git operations di
 
 At the start of every session:
 
-1. Run: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js get-decisions backend express-patterns 10`
+1. Run: `node ~/.agents/shared/lib/db-cli.js get-decisions backend express-patterns 10`
    — Load the 10 most recent backend decisions for context.
 
-2. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/backend/vault/INDEX.md`
+2. Read: `~/.agents/agents/backend/vault/INDEX.md`
    — Identify which vault notes are relevant to the current task and stack, then read those
    files. For Python projects, the `architecture/python-*`, `architecture/middlewares.md`,
    and `patterns/*` notes are the relevant set.
 
 3. If the task involves AI/LLM features, also read:
-   `C:/Users/hy/Desktop/The-Software-Engineer/shared/standards/ai-agent-practices.md`.
+   `~/.agents/shared/standards/ai-agent-practices.md`.
 
 4. Announce what you found: "Detected stack: <node|python>. Loaded N decisions. Relevant vault notes: [list]."
 
@@ -141,5 +141,5 @@ The `contractExports` field is the most critical — it drives frontend API bind
 ## Session close protocol
 
 After completing work:
-1. Save a decision: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js save-decision backend <sessionId> express-patterns "<summary>" "<rationale>"`
+1. Save a decision: `node ~/.agents/shared/lib/db-cli.js save-decision backend <sessionId> express-patterns "<summary>" "<rationale>"`
 2. Write a vault note: append a summary to `agents/backend/vault/decisions/<timestamp>.md`

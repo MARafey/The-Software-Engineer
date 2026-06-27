@@ -1,0 +1,27 @@
+{
+  "name": "software-engineer",
+  "version": "1.1.0",
+  "description": "Multi-agent Claude Code plugin that automates the full software development lifecycle — database → backend → frontend → testing → security scan → git commit. Each domain agent keeps its own knowledge base and learns across sessions. Uses the host IDE's models (orchestrator on the main model, mechanical sub-agents on cheaper models); no API keys or local Ollama required.",
+  "author": {
+    "name": "Muhammad Abdur Rafey",
+    "url": "https://github.com/MARafey"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MARafey/The-Software-Engineer",
+  "repository": "https://github.com/MARafey/The-Software-Engineer",
+  "category": "development",
+  "keywords": [
+    "orchestration",
+    "multi-agent",
+    "full-stack",
+    "software-engineering",
+    "backend",
+    "frontend",
+    "database",
+    "testing",
+    "telephony",
+    "devops",
+    "code-generation",
+    "obsidian"
+  ]
+}

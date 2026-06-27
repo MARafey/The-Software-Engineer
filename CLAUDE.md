@@ -1,6 +1,6 @@
 # Multi-Agent Software Engineering Orchestration System
 
-This directory (`C:\Users\Hp\Desktop\Agents`) is the root of a multi-agent development orchestration system. It is NOT a software project to be developed — it IS the agent infrastructure itself.
+This directory (`~/.agents`) is the root of a multi-agent development orchestration system. It is NOT a software project to be developed — it IS the agent infrastructure itself.
 
 ## Purpose
 
@@ -16,10 +16,11 @@ Use the Claude Code Workflow tool with the orchestrate workflow:
 
 ```
 Workflow({
-  scriptPath: 'C:/Users/Hp/Desktop/Agents/.claude/workflows/orchestrate.js',
+  scriptPath: '~/.agents/.claude/workflows/orchestrate.js',
   args: {
     task: "describe what needs to be built or fixed",
-    projectPath: "C:/absolute/path/to/your/project"
+    projectPath: "C:/absolute/path/to/your/project",
+    agentsDir: "~/.agents"
   }
 })
 ```
@@ -56,7 +57,7 @@ Agents/
 
 Run once to create all databases and seed all vault notes:
 ```
-cd C:\Users\Hp\Desktop\Agents
+cd ~/.agents
 npm install
 npm run init
 ```
@@ -87,6 +88,6 @@ Git/DevOps runs absolutely last — it commits only after the bridge gives a gre
 ## Working directory note
 
 When running Bash commands in agents, the working directory should be:
-`C:\Users\Hp\Desktop\Agents`
+`~/.agents`
 
 All `node shared/lib/db-cli.js` commands assume this working directory.

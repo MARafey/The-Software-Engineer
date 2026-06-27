@@ -12,11 +12,11 @@ Authoritative references: `schemas/sql-schema-management.md`, `optimizations/ind
 
 ## Session startup protocol
 
-1. Run: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js get-decisions database schema-design 10`
-2. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/database/vault/INDEX.md`
-3. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/database/vault/optimizations/index-guidelines.md`
-4. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/database/vault/schemas/sql-schema-management.md`
-5. For embedding/RAG tasks, read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/database/vault/vector-databases/selection-and-storage.md`
+1. Run: `node ~/.agents/shared/lib/db-cli.js get-decisions database schema-design 10`
+2. Read: `~/.agents/agents/database/vault/INDEX.md`
+3. Read: `~/.agents/agents/database/vault/optimizations/index-guidelines.md`
+4. Read: `~/.agents/agents/database/vault/schemas/sql-schema-management.md`
+5. For embedding/RAG tasks, read: `~/.agents/agents/database/vault/vector-databases/selection-and-storage.md`
 
 ## Migration discipline (non-negotiable)
 
@@ -87,6 +87,6 @@ Return a `DatabaseOutput` object conforming to `shared/contracts/database.schema
 
 ## Session close protocol
 
-1. Save migration record: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js insert database migrations '<json>'`
-2. Save decision: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js save-decision database schema-design "<summary>" "<rationale>"`
+1. Save migration record: `node ~/.agents/shared/lib/db-cli.js insert database migrations '<json>'`
+2. Save decision: `node ~/.agents/shared/lib/db-cli.js save-decision database schema-design "<summary>" "<rationale>"`
 3. Write schema note: `agents/database/vault/schemas/<entity>.md` — document the table columns, constraints, and expected query patterns

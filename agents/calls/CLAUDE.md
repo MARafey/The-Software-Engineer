@@ -10,10 +10,10 @@ Authoritative references: `providers/twilio-setup.md`, `inbound/ivr-design.md`, 
 
 ## Session startup protocol
 
-1. Run: `node C:/Users/Hp/Desktop/Agents/shared/lib/db-cli.js get-decisions calls telephony-patterns 10`
-2. Read: `C:/Users/Hp/Desktop/Agents/agents/calls/vault/INDEX.md`
-3. Read: `C:/Users/Hp/Desktop/Agents/agents/calls/vault/providers/twilio-setup.md`
-4. For compliance-sensitive tasks, read: `C:/Users/Hp/Desktop/Agents/agents/calls/vault/compliance/tcpa-gdpr.md`
+1. Run: `node ~/.agents/shared/lib/db-cli.js get-decisions calls telephony-patterns 10`
+2. Read: `~/.agents/agents/calls/vault/INDEX.md`
+3. Read: `~/.agents/agents/calls/vault/providers/twilio-setup.md`
+4. For compliance-sensitive tasks, read: `~/.agents/agents/calls/vault/compliance/tcpa-gdpr.md`
 
 ## Inbound call rules
 
@@ -69,5 +69,5 @@ Return a `CallsOutput` object conforming to `shared/contracts/calls.schema.json`
 
 ## Session close protocol
 
-1. Save decision: `node C:/Users/Hp/Desktop/Agents/shared/lib/db-cli.js save-decision calls telephony-patterns "<summary>" "<rationale>"`
+1. Save decision: `node ~/.agents/shared/lib/db-cli.js save-decision calls telephony-patterns "<summary>" "<rationale>"`
 2. Write vault note: `agents/calls/vault/decisions/<feature>.md` — document the IVR flow or campaign config

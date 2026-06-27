@@ -1,0 +1,36 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "software-engineer",
+  "owner": {
+    "name": "Muhammad Abdur Rafey",
+    "url": "https://github.com/MARafey"
+  },
+  "metadata": {
+    "description": "Multi-agent software engineering orchestrator. One command runs database → backend → frontend → testing → security → git, with per-agent knowledge bases and cross-domain contract validation."
+  },
+  "plugins": [
+    {
+      "name": "software-engineer",
+      "source": "./",
+      "description": "Automated full-stack software engineering. Routes any dev task through specialized domain agents (database, backend, frontend, testing, calls, bridge, git) in dependency order, asking plain-English questions first. Orchestrator runs on the host's main model; mechanical sub-agents run on cheaper models. No API keys or local Ollama required.",
+      "author": {
+        "name": "Muhammad Abdur Rafey",
+        "url": "https://github.com/MARafey"
+      },
+      "category": "development",
+      "homepage": "https://github.com/MARafey/The-Software-Engineer",
+      "keywords": [
+        "orchestration",
+        "multi-agent",
+        "full-stack",
+        "backend",
+        "frontend",
+        "database",
+        "testing",
+        "telephony",
+        "devops",
+        "code-generation"
+      ]
+    }
+  ]
+}

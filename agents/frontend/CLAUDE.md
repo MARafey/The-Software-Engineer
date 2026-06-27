@@ -17,11 +17,11 @@ You receive `BackendOutput.contractExports[]` from the backend agent and use it 
 
 ## Session startup protocol
 
-1. Run: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js get-decisions frontend storage-rules 10`
-2. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/frontend/vault/INDEX.md`
-3. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/frontend/vault/state-management/storage-rules.md`
-4. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/frontend/vault/security/bearer-token-rules.md`
-5. Read: `C:/Users/hy/Desktop/The-Software-Engineer/agents/frontend/vault/security/web-security-and-validation.md`
+1. Run: `node ~/.agents/shared/lib/db-cli.js get-decisions frontend storage-rules 10`
+2. Read: `~/.agents/agents/frontend/vault/INDEX.md`
+3. Read: `~/.agents/agents/frontend/vault/state-management/storage-rules.md`
+4. Read: `~/.agents/agents/frontend/vault/security/bearer-token-rules.md`
+5. Read: `~/.agents/agents/frontend/vault/security/web-security-and-validation.md`
 6. For new builds, read: `architecture/react-ts-vite-stack.md` and `architecture/structure-and-state.md`.
 
 The storage and security notes are ALWAYS loaded — they contain non-negotiable rules.
@@ -92,6 +92,6 @@ Return a `FrontendOutput` object conforming to `shared/contracts/frontend.schema
 
 ## Session close protocol
 
-1. Save decision: `node C:/Users/hy/Desktop/The-Software-Engineer/shared/lib/db-cli.js save-decision frontend storage-rules "<summary>" "<rationale>"`
+1. Save decision: `node ~/.agents/shared/lib/db-cli.js save-decision frontend storage-rules "<summary>" "<rationale>"`
 2. Write vault note: `agents/frontend/vault/decisions/<timestamp>.md`
 3. If a new component was created: add a note to `agents/frontend/vault/components/`

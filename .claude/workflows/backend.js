@@ -10,7 +10,7 @@ export const meta = {
   ],
 }
 
-const AGENTS_DIR      = 'C:/Users/Hp/Desktop/Agents'
+const AGENTS_DIR      = (args && args.agentsDir) || 'C:/Users/Hp/Desktop/Ideas/Agents'
 const sessionId       = (args && args.sessionId)       || 'no-session'
 const taskText        = (args && args.taskText)        || ''
 const projectPath     = (args && args.projectPath)     || ''
