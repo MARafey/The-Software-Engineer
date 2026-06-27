@@ -4,6 +4,7 @@ export const meta = {
   phases: [
     { title: 'Load Context', detail: 'Read vault notes and prior decisions' },
     { title: 'Plan', detail: 'flow-planner designs business logic flow' },
+    { title: 'Data Architecture', detail: 'data-architect: single shared pool, AI-query discipline, caching' },
     { title: 'Build', detail: 'route-creator generates code files' },
     { title: 'Standards', detail: 'code-standards audits JSDoc, errors, comments' },
     { title: 'Structure', detail: 'folder-structure verifies layout and READMEs' },
@@ -86,6 +87,45 @@ const plan = await agent(
 
 log(`Planned ${plan.routes.length} route(s) for feature: ${plan.featureName}`)
 
+// ─── Phase: Data Architecture ────────────────────────────────────────────────
+// Works out the data-access strategy BEFORE any code is written so the feature
+// stays lean on the database — one shared pool, disciplined AI queries, caching.
+phase('Data Architecture')
+
+const dataAccess = await agent(
+  `You are the data-architect sub-agent of the Backend Agent.\n\n` +
+  `Task: "${taskText}"\n` +
+  `Project: ${projectPath}\n` +
+  `Planned routes: ${JSON.stringify(plan.routes)}\n` +
+  `Available tables: ${tableContext}\n\n` +
+  `Read these vault notes and apply their rules:\n` +
+  `- ${AGENTS_DIR}/agents/backend/vault/architecture/data-access-and-pooling.md\n` +
+  `- ${AGENTS_DIR}/agents/backend/vault/architecture/ai-query-discipline.md\n` +
+  `- ${AGENTS_DIR}/agents/backend/vault/architecture/caching-and-lookup-tables.md\n\n` +
+  `Inspect ${projectPath} for an existing DB connection/pool and reuse it.\n\n` +
+  `Design the data-access layer so the feature does not overload the database:\n` +
+  `1. ONE shared DB connection/pool, initialized once and reused — never a new connection per request, never pool exhaustion. Reuse the project's existing pool; only create one if none exists.\n` +
+  `2. AI/LLM query discipline: read-only query tools, always LIMIT + time filters, never SELECT *, parameterized queries, no N+1, no over-selection.\n` +
+  `3. Caching + lookup tables: what to cache and where (in-memory/Redis), invalidation strategy, and which reference/lookup tables avoid repeated joins.\n\n` +
+  `Return JSON: { dbAccess: {singlePool: boolean, init: string, notes: string}, aiQueryRules: [string], caching: {strategy: string, lookupTables: [string], invalidation: string}, summary: string }`,
+  {
+    label: 'data-architect',
+    phase: 'Data Architecture',
+    schema: {
+      type: 'object',
+      required: ['dbAccess', 'aiQueryRules', 'caching', 'summary'],
+      properties: {
+        dbAccess:     { type: 'object' },
+        aiQueryRules: { type: 'array', items: { type: 'string' } },
+        caching:      { type: 'object' },
+        summary:      { type: 'string' },
+      },
+    },
+  }
+)
+
+log(`Data access: singlePool=${dataAccess.dbAccess && dataAccess.dbAccess.singlePool}, ${dataAccess.aiQueryRules.length} AI-query rule(s)`)
+
 // ─── Phase: Build ─────────────────────────────────────────────────────────────
 phase('Build')
 
@@ -97,6 +137,9 @@ const build = await agent(
   `Routes to implement: ${JSON.stringify(plan.routes)}\n` +
   `Validation schemas: ${JSON.stringify(plan.validationSchemas)}\n\n` +
   `Read the existing code at ${projectPath} to follow its conventions.\n\n` +
+  `DATA-ACCESS DESIGN — follow this exactly: ${JSON.stringify(dataAccess)}\n` +
+  `All DB access MUST use the single shared pool (never open a connection per request). ` +
+  `Any AI/LLM query MUST be read-only with LIMIT + time filters and never SELECT *.\n\n` +
   `Create these files in src/features/${plan.featureName}/:\n` +
   `  routes.js   — MUST export array of: {method,path,handler,middleware[],description,requestBodySchema,responseSchema,authRequired}\n` +
   `  controller.js — thin layer, imports from service.js\n` +
@@ -208,6 +251,7 @@ return {
   sessionId,
   agentName:      'backend',
   status:         'completed',
+  dataAccess,
   routes:         build.routeContracts,
   handlers:       build.filesCreated.map(f => ({ filePath: f, functions: [], feature: plan.featureName })),
   filesChanged:   allFiles,

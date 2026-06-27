@@ -128,10 +128,11 @@ Artifacts are written into the target project at `src/ai/<agent-name>/`
 Spawn these in order (or as appropriate to the task):
 
 1. **flow-planner** — maps out the business logic flow before any code is written; identifies any AI/LLM agents the feature needs
-2. **route-creator** — generates the actual route + controller + service files
-3. **prompt-engineer** — *(only when the feature has an AI/LLM component)* designs each AI micro-agent's prompt, few-shot examples, strict output schema, validation loop, and success criteria; writes them to `src/ai/<agent-name>/`
-4. **code-standards** — audits JSDoc, error handling format, commenting; fixes issues
-5. **folder-structure** — verifies feature folder layout; creates README.md if missing
+2. **data-architect** — works out the data-access strategy before code: a single shared DB connection/pool (no per-request connections, no pool exhaustion), read-only AI queries (always `LIMIT` + time filters, never `SELECT *`, no over-selection), and a caching / lookup-table layer. References `architecture/data-access-and-pooling.md`, `architecture/ai-query-discipline.md`, `architecture/caching-and-lookup-tables.md`
+3. **route-creator** — generates the actual route + controller + service files (using the single shared pool and the data-architect's query rules)
+4. **prompt-engineer** — *(only when the feature has an AI/LLM component)* designs each AI micro-agent's prompt, few-shot examples, strict output schema, validation loop, and success criteria; writes them to `src/ai/<agent-name>/`
+5. **code-standards** — audits JSDoc, error handling format, commenting; fixes issues
+6. **folder-structure** — verifies feature folder layout; creates README.md if missing
 
 ## Output contract
 

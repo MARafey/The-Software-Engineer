@@ -5,6 +5,7 @@ export const meta = {
     { title: 'Load Context', detail: 'Read storage rules, security rules, prior decisions' },
     { title: 'UI Design', detail: 'ui-designer defines layout and design system usage' },
     { title: '3D Design', detail: '3d-designer architects scene, physics, shaders, scroll animation', model: 'claude-opus-4-8' },
+    { title: 'Complex CSS', detail: 'layout / positioning / contrast specialists handle parent-child CSS' },
     { title: 'Components', detail: 'component-creator builds component files' },
     { title: 'API Wiring', detail: 'api-request-handler wires components to backend contracts' },
     { title: 'Security Check', detail: 'security-checker audits token placement, CSP, storage' },
@@ -266,6 +267,55 @@ const threeDContext = threeDDesign
     `Performance rules (mandatory): ${threeDDesign.performanceNotes.join('; ')}`
   : ''
 
+// ─── Phase: Complex CSS ───────────────────────────────────────────────────────
+// The hardest styling — parent-child layout, positioning/stacking, and contrast —
+// is owned by dedicated specialists who run on every frontend task and feed their
+// rules into the component build.
+phase('Complex CSS')
+
+const cssNote = `${AGENTS_DIR}/agents/frontend/vault/architecture/complex-css.md`
+const cssSpecs = await parallel([
+  () => agent(
+    `You are the layout-architect sub-agent of the Frontend Agent.\n\n` +
+    `Task: "${taskText}"\nProject: ${projectPath}\nPages: ${JSON.stringify(uiDesign.pages)}\n\n` +
+    `Read ${cssNote} for the rules.\n\n` +
+    `Own parent-child CSS and layout: container/child relationships, CSS Grid and Flexbox structure, ` +
+    `responsive breakpoints, and how nested elements size and align. Flag any fragile parent-child dependency.\n\n` +
+    `Return JSON: { rules: [string], gridFlexPlan: string, responsive: string }`,
+    { label: 'layout-architect', phase: 'Complex CSS', model: 'sonnet',
+      schema: { type: 'object', required: ['rules'], properties: { rules: { type: 'array', items: { type: 'string' } }, gridFlexPlan: { type: 'string' }, responsive: { type: 'string' } } } }
+  ),
+  () => agent(
+    `You are the positioning-specialist sub-agent of the Frontend Agent.\n\n` +
+    `Task: "${taskText}"\nProject: ${projectPath}\nPages: ${JSON.stringify(uiDesign.pages)}\n\n` +
+    `Read ${cssNote} for the rules.\n\n` +
+    `Own positioning, stacking context, z-index layering, overflow/scroll containers, sticky/fixed elements, ` +
+    `and overlay/portal placement. Prevent z-index wars and clipping bugs.\n\n` +
+    `Return JSON: { rules: [string], zIndexScale: string, overflowPlan: string }`,
+    { label: 'positioning-specialist', phase: 'Complex CSS', model: 'sonnet',
+      schema: { type: 'object', required: ['rules'], properties: { rules: { type: 'array', items: { type: 'string' } }, zIndexScale: { type: 'string' }, overflowPlan: { type: 'string' } } } }
+  ),
+  () => agent(
+    `You are the contrast-specialist sub-agent of the Frontend Agent.\n\n` +
+    `Task: "${taskText}"\nProject: ${projectPath}\nDesign brief: ${designBrief}\n\n` +
+    `Read ${cssNote} for the rules.\n\n` +
+    `Own color contrast and visual accessibility: ensure WCAG AA (4.5:1 text, 3:1 large/UI), focus-visible states, ` +
+    `contrast across light and dark themes, and that design-token colors meet ratios. List any token pair that fails and the fix.\n\n` +
+    `Return JSON: { rules: [string], failingPairs: [string], focusStates: string }`,
+    { label: 'contrast-specialist', phase: 'Complex CSS', model: 'sonnet',
+      schema: { type: 'object', required: ['rules'], properties: { rules: { type: 'array', items: { type: 'string' } }, failingPairs: { type: 'array', items: { type: 'string' } }, focusStates: { type: 'string' } } } }
+  ),
+])
+
+const [layoutSpec, positionSpec, contrastSpec] = cssSpecs
+log(`CSS specialists — layout:${layoutSpec ? layoutSpec.rules.length : 0} positioning:${positionSpec ? positionSpec.rules.length : 0} contrast:${contrastSpec ? contrastSpec.rules.length : 0} rule(s)`)
+
+const cssContext =
+  `\n\nCOMPLEX CSS DESIGN (follow exactly):\n` +
+  `Layout / parent-child: ${layoutSpec ? JSON.stringify(layoutSpec) : 'n/a'}\n` +
+  `Positioning / stacking: ${positionSpec ? JSON.stringify(positionSpec) : 'n/a'}\n` +
+  `Contrast / a11y: ${contrastSpec ? JSON.stringify(contrastSpec) : 'n/a'}`
+
 // ─── Phase: Components ────────────────────────────────────────────────────────
 phase('Components')
 
@@ -280,7 +330,7 @@ const components = await agent(
   `- Components import from the api file, never use fetch/axios directly\n` +
   `- Use design tokens (CSS custom properties) — no hardcoded colors\n` +
   `- Include loading, empty, and error states in every data-fetching component\n` +
-  `${threeDContext}\n\n` +
+  `${threeDContext}${cssContext}\n\n` +
   `Return JSON: { components: [{name,filePath,type,usesAPI:[routePath]}], apiFiles: [string], filesCreated: [string] }`,
   {
     label: 'component-creator',

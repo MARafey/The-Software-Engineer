@@ -76,9 +76,12 @@ localStorage.getItem('token')           // token in localStorage
 Spawn in this order:
 
 1. **ui-designer** — layout decisions, typography choices, color token usage, responsive breakpoints
-2. **component-creator** — builds actual component files; imports from api/ files only
-3. **api-request-handler** — wires each component to its contractExport; decides storage layer for response data; ensures reducers/slices/stores are updated correctly
-4. **security-checker** — audits bearer token placement, CSP, CORS config, X-headers, storage sensitivity; BLOCKS if any error-severity violation is found
+2. **layout-architect** — owns parent-child CSS: CSS Grid / Flexbox structure, container–child sizing relationships, responsive breakpoints, and fragile-nesting fixes (`min-width: 0` overflow guards)
+3. **positioning-specialist** — owns positioning, stacking contexts and the z-index scale, overflow / scroll containers, sticky/fixed elements, and portal-rendered overlays
+4. **contrast-specialist** — owns colour contrast and visual accessibility: WCAG AA ratios across light/dark themes and visible `:focus-visible` states
+5. **component-creator** — builds actual component files; imports from api/ files only; applies the CSS specialists' rules
+6. **api-request-handler** — wires each component to its contractExport; decides storage layer for response data; ensures reducers/slices/stores are updated correctly
+7. **security-checker** — audits bearer token placement, CSP, CORS config, X-headers, storage sensitivity; BLOCKS if any error-severity violation is found
 
 The security-checker runs LAST and its result determines whether the output is `status: completed` or `status: failed`.
 

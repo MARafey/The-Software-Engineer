@@ -11,7 +11,7 @@
 - **Validated by:** [[mcpbridge]]
 
 ## Internal pipeline (sub-agents)
-[[ui-designer]] → [[3d-designer]] → [[component-creator]] → [[api-request-handler]] → [[security-checker]]
+[[ui-designer]] → [[3d-designer]] → [[layout-architect]] → [[positioning-specialist]] → [[contrast-specialist]] → [[component-creator]] → [[api-request-handler]] → [[security-checker]]
 
 ## Knowledge
 Accumulated decisions and patterns live in this vault (see `INDEX.md`) and in `knowledge.db`.

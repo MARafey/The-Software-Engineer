@@ -2078,6 +2078,79 @@ function validateVonageSignature(req, res, next) {
 
 log.ok('calls vault seeded');
 
+// ─── Backend: data-access architecture (data-architect sub-agent) ─────────────
+writeNote('backend', 'architecture/data-access-and-pooling.md', `# Data Access & Connection Pooling
+
+Goal: never overload the database. One application, one shared pool.
+
+## Single shared pool
+- Initialize the DB connection/pool ONCE at startup (a singleton module) and import it everywhere.
+- Never call \`new Pool()\` / \`createConnection()\` per request, per route, or inside a loop.
+- Node/pg: a single \`Pool\` with \`max\` sized to the DB's connection limit (e.g. 10–20), plus \`idleTimeoutMillis\` and \`connectionTimeoutMillis\`.
+- Python/SQLAlchemy: one \`Engine\` (it owns the pool) created once; sessions are short-lived and returned to the pool.
+- Serverless / many instances: put a pooler in front (PgBouncer / RDS Proxy / Supabase pooler) — direct pools exhaust fast.
+
+## Avoid exhaustion
+- Always release/return connections (try/finally, or a context manager).
+- Keep transactions short; never hold a connection open across an external or AI/LLM call.
+- Cap concurrency so in-flight queries never exceed the pool size.
+`);
+
+writeNote('backend', 'architecture/ai-query-discipline.md', `# AI Query Discipline
+
+When an AI/LLM agent touches the database it must not over-fetch or over-call.
+
+## Rules (enforced by the data-architect)
+- **Read-only by default** — AI tools get SELECT-only access; writes go through reviewed services.
+- **Always bound results** — \`LIMIT\` + a time/range filter on every query. No unbounded scans.
+- **Never \`SELECT *\`** — list only the columns the agent needs.
+- **Parameterized queries only** — never build SQL by string-concatenating model output.
+- **One purposeful query, not many** — avoid N+1; don't re-query for data already in context.
+- **Retrieval (RAG):** fetch top-K with a relevance threshold; never pull whole tables into the prompt.
+- **Cache hot lookups** (see [[caching-and-lookup-tables]]) so repeated agent calls don't re-hit the DB.
+`);
+
+writeNote('backend', 'architecture/caching-and-lookup-tables.md', `# Caching & Lookup Tables
+
+Reduce database load by not asking the same question twice.
+
+## Caching
+- Cache read-heavy, slow-changing data (config, reference lists, computed aggregates).
+- Layer: in-memory (per-process) for tiny hot data; Redis for shared/multi-instance state.
+- Set TTLs; invalidate on write (write-through, or an explicit bust in the mutating service).
+- Cache keys must include all query params; never cache per-user data under a shared key.
+
+## Lookup / reference tables
+- Move enums and repeated reference data into lookup tables (or cached maps) to avoid repeated joins.
+- Preload small lookups into memory at startup.
+- Add covering indexes for the lookup access paths.
+`);
+log.ok('backend data-access architecture seeded');
+
+// ─── Frontend: complex CSS reference (layout / positioning / contrast) ────────
+writeNote('frontend', 'architecture/complex-css.md', `# Complex CSS (parent-child, positioning, contrast)
+
+The hardest, most bug-prone styling. Three specialists own it and run on every frontend task.
+
+## Layout & parent-child ([[layout-architect]])
+- Prefer Grid for 2D structure, Flex for 1D rows/columns; avoid deep nesting without reason.
+- A child's size/position depends on its parent's display/sizing — make that dependency explicit.
+- Add \`min-width: 0\` / \`min-height: 0\` on flex/grid children to stop overflow blowouts.
+- Drive responsive behaviour with container queries / breakpoints, not magic numbers.
+
+## Positioning & stacking ([[positioning-specialist]])
+- Maintain a documented z-index scale (e.g. base 0, dropdown 1000, modal 2000, toast 3000).
+- Know what creates a stacking context (transform, opacity < 1, position + z-index, filter).
+- Render overlays/modals in a portal at the body root to escape \`overflow: hidden\` clipping.
+- Use \`position: sticky\` carefully — it needs a scroll container and no overflow-hidden ancestor.
+
+## Contrast & accessibility ([[contrast-specialist]])
+- Meet WCAG AA: 4.5:1 for normal text, 3:1 for large text and UI/icons.
+- Verify ratios in BOTH light and dark themes; check token-on-token colour pairs.
+- Always provide a visible \`:focus-visible\` state — never remove outlines without a replacement.
+`);
+log.ok('frontend complex-css architecture seeded');
+
 // ─── Connected knowledge graph (Obsidian [[wikilinks]]) ───────────────────────
 // A home note per agent + sub-agent stubs, cross-linked along the contract flow,
 // plus an orchestrator hub linking to everything. Open the `agents/` folder as
@@ -2101,7 +2174,8 @@ const GRAPH = {
     role: 'Builds routes, controllers, and services; declares the API contract.',
     upstream: ['database'], downstream: ['frontend', 'testing', 'calls'], validators: ['mcpbridge'],
     subAgents: [
-      ['flow-planner', 'Maps the business-logic flow before any code.', 'route-creator'],
+      ['flow-planner', 'Maps the business-logic flow before any code.', 'data-architect'],
+      ['data-architect', 'Designs lean data access: one shared DB pool, read-only AI queries (LIMIT + time filters, no SELECT *), caching and lookup tables.', 'route-creator'],
       ['route-creator', 'Generates route + controller + service files.', 'prompt-engineer'],
       ['prompt-engineer', 'Designs AI micro-agents when the feature needs an LLM.', 'code-standards'],
       ['code-standards', 'Audits JSDoc, error format, and comments.', 'folder-structure'],
@@ -2114,7 +2188,10 @@ const GRAPH = {
     upstream: ['backend'], downstream: [], validators: ['mcpbridge'],
     subAgents: [
       ['ui-designer', 'Defines layout and design-system usage.', '3d-designer'],
-      ['3d-designer', 'Architects Three.js/WebGL scenes (Opus model).', 'component-creator'],
+      ['3d-designer', 'Architects Three.js/WebGL scenes (Opus model).', 'layout-architect'],
+      ['layout-architect', 'Owns parent-child CSS: Grid/Flex layout, container relationships, responsive structure.', 'positioning-specialist'],
+      ['positioning-specialist', 'Owns positioning, stacking/z-index, overflow and scroll containers.', 'contrast-specialist'],
+      ['contrast-specialist', 'Owns colour contrast and visual accessibility (WCAG AA+), focus states.', 'component-creator'],
       ['component-creator', 'Builds the component files.', 'api-request-handler'],
       ['api-request-handler', 'Wires components to backend contracts.', 'security-checker'],
       ['security-checker', 'Audits token placement, CSP, and storage.', null],
