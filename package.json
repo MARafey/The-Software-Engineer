@@ -11,7 +11,9 @@
     "seed": "node init/seed-vaults.js",
     "verify": "node init/verify.js",
     "init": "node init/bootstrap.js && node init/seed-vaults.js && node init/verify.js",
-    "mcp": "node mcp/server.mjs"
+    "mcp": "node mcp/server.mjs",
+    "test:mcp": "node tests/mcp-protocol.mjs",
+    "test": "node init/verify.js && node tests/mcp-protocol.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
