@@ -1,15 +1,20 @@
 {
   "name": "software-engineer",
-  "version": "1.0.0",
-  "description": "Multi-agent Claude Code skill — automates the full software development lifecycle",
+  "version": "1.2.0",
+  "description": "Multi-agent software engineering — Claude Code plugin + cross-IDE MCP server that automates the full development lifecycle",
   "type": "commonjs",
+  "bin": {
+    "the-software-engineer-mcp": "mcp/server.js"
+  },
   "scripts": {
     "bootstrap": "node init/bootstrap.js",
     "seed": "node init/seed-vaults.js",
     "verify": "node init/verify.js",
-    "init": "node init/bootstrap.js && node init/seed-vaults.js && node init/verify.js"
+    "init": "node init/bootstrap.js && node init/seed-vaults.js && node init/verify.js",
+    "mcp": "node mcp/server.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ajv": "^8.17.1",
     "better-sqlite3": "^12.11.1",
     "chalk": "^4.1.2",

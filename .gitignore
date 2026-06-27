@@ -3,3 +3,16 @@ shared/orchestrator.db
 agents/*/knowledge.db
 .env
 *.env
+
+# Personal/runtime agent output — never ship to other users.
+# Baseline seed knowledge (templates, patterns, providers, etc.) still ships.
+agents/*/vault/projects/
+agents/testing/vault/collections/
+agents/testing/vault/reports/
+agents/mcpbridge/vault/contracts/
+agents/gitdevops/vault/security-scans/scan-results/
+
+# Stray empty files occasionally created by Git Bash token quirks
+/AI
+/NO
+/YES
