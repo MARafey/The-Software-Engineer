@@ -2,4 +2,5 @@
 
 | File | Topics | Last Updated |
 |------|--------|--------------|
-| [templates/api-stub-template.md](templates/api-stub-template.md) | | 2026-06-19 |
+| [mcpbridge.md](mcpbridge.md) | | 2026-06-27 |
+| [templates/api-stub-template.md](templates/api-stub-template.md) | | 2026-06-27 |

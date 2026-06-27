@@ -228,6 +228,24 @@ await agent(
   { label: 'session-final', model: 'haiku' }
 )
 
+// Real-time: write this run's summary into the orchestrator's own vault (git-ignored).
+await agent(
+  `Write a session summary note to this exact path (create parent folders if needed):\n` +
+  `${AGENTS_DIR}/agents/orchestrator/vault/sessions/${sessionId}.md\n\n` +
+  `File content (Markdown):\n\n` +
+  `# Session ${sessionId}\n\n` +
+  `- Task: ${taskText.replace(/`/g, "'").slice(0, 300)}\n` +
+  `- Project: ${projectPath}\n` +
+  `- Status: ${finalStatus}\n` +
+  `- Domains: ${['database', 'backend', 'frontend', 'testing', 'calls', 'mcpbridge', 'gitdevops']
+    .filter((_, i) => [databaseOutput, backendOutput, frontendOutput, testingOutput, callsOutput, bridgeOutput, gitOutput][i])
+    .map((d) => '[[' + d + ']]').join(' · ')}\n` +
+  `- Branch: ${(gitOutput && gitOutput.branch) || 'n/a'}\n` +
+  `- Orchestrated by: [[orchestrator]]\n\n` +
+  `Return "done".`,
+  { label: 'orchestrator-session-note', model: 'haiku' }
+)
+
 return {
   sessionId,
   status: finalStatus,

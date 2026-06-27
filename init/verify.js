@@ -27,7 +27,7 @@ function check(label, fn) {
 }
 
 // ─── Agent knowledge.db files ─────────────────────────────────────────────────
-const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls'];
+const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls', 'orchestrator'];
 const COMMON_TABLES = ['decisions', 'patterns', 'session_log', 'contracts'];
 
 AGENT_NAMES.forEach(name => {

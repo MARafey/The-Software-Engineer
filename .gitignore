@@ -11,6 +11,7 @@ agents/testing/vault/collections/
 agents/testing/vault/reports/
 agents/mcpbridge/vault/contracts/
 agents/gitdevops/vault/security-scans/scan-results/
+agents/orchestrator/vault/sessions/
 
 # Stray empty files occasionally created by Git Bash token quirks
 /AI

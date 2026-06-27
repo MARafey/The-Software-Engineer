@@ -2078,8 +2078,155 @@ function validateVonageSignature(req, res, next) {
 
 log.ok('calls vault seeded');
 
+// ─── Connected knowledge graph (Obsidian [[wikilinks]]) ───────────────────────
+// A home note per agent + sub-agent stubs, cross-linked along the contract flow,
+// plus an orchestrator hub linking to everything. Open the `agents/` folder as
+// ONE Obsidian vault to navigate the whole graph.
+const link = (a) => `[[${a}]]`;
+const links = (arr) => (arr.length ? arr.map(link).join(' · ') : '— none');
+
+const GRAPH = {
+  database: {
+    title: 'Database Agent',
+    role: 'Designs tables and migrations, validates schema, optimizes queries.',
+    upstream: [], downstream: ['backend', 'calls'], validators: ['mcpbridge'],
+    subAgents: [
+      ['table-creator', 'Writes migration SQL for new/changed tables.', 'schema-validator'],
+      ['schema-validator', 'Checks foreign keys, constraints, and naming.', 'query-optimizer'],
+      ['query-optimizer', 'Adds indexes and flags N+1 / slow patterns.', null],
+    ],
+  },
+  backend: {
+    title: 'Backend Agent',
+    role: 'Builds routes, controllers, and services; declares the API contract.',
+    upstream: ['database'], downstream: ['frontend', 'testing', 'calls'], validators: ['mcpbridge'],
+    subAgents: [
+      ['flow-planner', 'Maps the business-logic flow before any code.', 'route-creator'],
+      ['route-creator', 'Generates route + controller + service files.', 'prompt-engineer'],
+      ['prompt-engineer', 'Designs AI micro-agents when the feature needs an LLM.', 'code-standards'],
+      ['code-standards', 'Audits JSDoc, error format, and comments.', 'folder-structure'],
+      ['folder-structure', 'Verifies the feature-folder layout and READMEs.', null],
+    ],
+  },
+  frontend: {
+    title: 'Frontend Agent',
+    role: 'Builds components, wires API calls, enforces client security.',
+    upstream: ['backend'], downstream: [], validators: ['mcpbridge'],
+    subAgents: [
+      ['ui-designer', 'Defines layout and design-system usage.', '3d-designer'],
+      ['3d-designer', 'Architects Three.js/WebGL scenes (Opus model).', 'component-creator'],
+      ['component-creator', 'Builds the component files.', 'api-request-handler'],
+      ['api-request-handler', 'Wires components to backend contracts.', 'security-checker'],
+      ['security-checker', 'Audits token placement, CSP, and storage.', null],
+    ],
+  },
+  testing: {
+    title: 'Testing Agent',
+    role: 'Generates Postman collections from the backend route contract.',
+    upstream: ['backend'], downstream: [], validators: [], subAgents: [],
+  },
+  calls: {
+    title: 'Calls Agent',
+    role: 'Builds inbound IVR / outbound campaigns, webhooks, voice scripts, compliance.',
+    upstream: ['backend', 'database'], downstream: [], validators: ['mcpbridge'],
+    subAgents: [
+      ['flow-designer', 'Maps the IVR tree (inbound) or campaign flow (outbound).', 'telephony-integrator'],
+      ['telephony-integrator', 'Writes webhook handlers and TwiML/NCCO.', 'voice-script-writer'],
+      ['voice-script-writer', 'Writes all TTS prompts.', 'compliance-checker'],
+      ['compliance-checker', 'Validates TCPA/GDPR/DNC and recording consent.', null],
+    ],
+  },
+  mcpbridge: {
+    title: 'MCP Bridge Agent',
+    role: 'Validates frontend↔backend↔database↔calls contracts; gates the commit.',
+    upstream: ['backend', 'frontend', 'database', 'calls'], downstream: ['gitdevops'], validators: [], subAgents: [],
+  },
+  gitdevops: {
+    title: 'Git / DevOps Agent',
+    role: 'Runs the security scan, creates the branch, writes the commit.',
+    upstream: ['mcpbridge'], downstream: [], validators: [], subAgents: [],
+  },
+};
+
+const DOMAINS = Object.keys(GRAPH);
+
+for (const [name, g] of Object.entries(GRAPH)) {
+  const pipeline = g.subAgents.length
+    ? g.subAgents.map((s) => link(s[0])).join(' → ')
+    : 'Single agent — no sub-agents.';
+  writeNote(name, `${name}.md`, [
+    `# ${g.title}`,
+    '',
+    '> Part of the Software Engineer orchestration graph. Open the `agents/` folder as a single Obsidian vault to follow the links below.',
+    '',
+    `**Role:** ${g.role}`,
+    `**Orchestrated by:** ${link('orchestrator')}`,
+    '',
+    '## Talks to',
+    `- **Reads from (upstream):** ${g.upstream.length ? links(g.upstream) : '— (entry point)'}`,
+    `- **Hands off to (downstream):** ${g.downstream.length ? links(g.downstream) : '— (leaf)'}`,
+    `- **Validated by:** ${links(g.validators)}`,
+    '',
+    '## Internal pipeline (sub-agents)',
+    pipeline,
+    '',
+    '## Knowledge',
+    'Accumulated decisions and patterns live in this vault (see `INDEX.md`) and in `knowledge.db`.',
+    '',
+  ].join('\n'));
+
+  for (const [sub, role, next] of g.subAgents) {
+    writeNote(name, `sub-agents/${sub}.md`, [
+      `# ${sub}`,
+      '',
+      `Sub-agent of ${link(name)}.`,
+      '',
+      `**Does:** ${role}`,
+      `**Hands off to:** ${next ? link(next) : `returns results to ${link(name)}`}`,
+      '',
+    ].join('\n'));
+  }
+}
+
+writeNote('orchestrator', 'orchestrator.md', [
+  '# Orchestrator',
+  '',
+  'The top-level coordinator. Routes each task through the domain agents in dependency order and passes typed JSON contracts between them.',
+  '',
+  '## Dependency order',
+  `${link('database')} → ${link('backend')} → ( ${link('frontend')} · ${link('testing')} · ${link('calls')} ) → ${link('mcpbridge')} → ${link('gitdevops')}`,
+  '',
+  '## Domain agents',
+  DOMAINS.map(link).join(' · '),
+  '',
+  '## How they communicate',
+  "- **Knowledge (persistent):** each agent's vault + `knowledge.db` — this connected graph.",
+  '- **Coordination (live):** typed JSON contracts passed per task + `shared/orchestrator.db` session log.',
+  '- **Per-task history:** a session note is written to `sessions/` in real time (git-ignored — personal).',
+  '',
+].join('\n'));
+
+writeNote('orchestrator', 'routing/dependency-order.md', [
+  '# Routing & dependency order',
+  '',
+  '| Step | Agent | Consumes | Produces |',
+  '|------|-------|----------|----------|',
+  `| 1 | ${link('database')} | task | DatabaseOutput |`,
+  `| 2 | ${link('backend')} | DatabaseOutput | BackendOutput |`,
+  `| 3a | ${link('frontend')} | BackendOutput | FrontendOutput |`,
+  `| 3b | ${link('testing')} | BackendOutput | Postman collection |`,
+  `| 3c | ${link('calls')} | BackendOutput, DatabaseOutput | CallsOutput |`,
+  `| 4 | ${link('mcpbridge')} | all outputs | contract validation |`,
+  `| 5 | ${link('gitdevops')} | validated outputs | branch + commit |`,
+  '',
+  'Steps 3a–3c run in parallel. The commit only happens if step 4 passes.',
+  '',
+].join('\n'));
+
+log.ok('knowledge graph seeded (home notes, sub-agents, orchestrator)');
+
 // ─── Update all INDEX.md files ────────────────────────────────────────────────
-const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls'];
+const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls', 'orchestrator'];
 AGENT_NAMES.forEach(name => {
   updateIndexMd(name);
   log.ok(`${name} vault/INDEX.md updated`);

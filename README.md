@@ -98,9 +98,10 @@ The git agent blocks commits that contain:
 
 ## Knowledge bases
 
-Each agent builds up its own Obsidian-compatible knowledge vault at `~/.agents/agents/<name>/vault/`. Open any vault folder in Obsidian as a new vault to browse decisions, patterns, and session history.
+Each agent builds up its own Obsidian-compatible knowledge vault at `~/.agents/agents/<name>/vault/`.
 
 ```
+~/.agents/agents/orchestrator/vault/ Routing, dependency order, per-task session history
 ~/.agents/agents/backend/vault/     Express patterns, security rules, route decisions
 ~/.agents/agents/frontend/vault/    Design tokens, storage rules, 3D scene patterns, component library
 ~/.agents/agents/database/vault/    Schemas, migrations, query optimization notes
@@ -109,6 +110,19 @@ Each agent builds up its own Obsidian-compatible knowledge vault at `~/.agents/a
 ~/.agents/agents/gitdevops/vault/   Branch strategy, security scan results
 ~/.agents/agents/mcpbridge/vault/   Contract validation history
 ```
+
+### See the whole graph
+
+The vaults are cross-linked with Obsidian `[[wikilinks]]`. To navigate the system as one
+connected knowledge graph, **open the `~/.agents/agents/` folder itself as a single Obsidian vault**
+(not an individual agent folder). You'll get:
+
+- an **orchestrator** hub note linking to every domain agent, plus the dependency order;
+- a **home note per agent** showing what it reads from (upstream), hands off to (downstream), and is validated by;
+- **sub-agent** notes wired into each domain's internal pipeline (e.g. `flow-planner → route-creator → …`);
+- **per-task session notes** the orchestrator writes in real time as work runs.
+
+Open Obsidian's Graph View to see the agents and their contract flow as a live map.
 
 ---
 

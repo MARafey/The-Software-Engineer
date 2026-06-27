@@ -45,6 +45,9 @@ const DIRS = [
   'agents/calls/vault/scripts',
   'agents/calls/vault/security',
   'agents/calls/vault/decisions',
+  'agents/orchestrator/vault/routing',
+  'agents/orchestrator/vault/sessions',
+  'agents/orchestrator/vault/decisions',
   'shared/lib',
   'shared/contracts',
   'shared/standards',
@@ -177,7 +180,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id);
 `;
 
 // ─── Create agent knowledge.db files ─────────────────────────────────────────
-const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls'];
+const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls', 'orchestrator'];
 
 log.info('Creating agent knowledge.db files...');
 AGENT_NAMES.forEach(name => {
