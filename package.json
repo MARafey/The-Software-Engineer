@@ -4,14 +4,14 @@
   "description": "Multi-agent software engineering — Claude Code plugin + cross-IDE MCP server that automates the full development lifecycle",
   "type": "commonjs",
   "bin": {
-    "the-software-engineer-mcp": "mcp/server.js"
+    "the-software-engineer-mcp": "mcp/server.mjs"
   },
   "scripts": {
     "bootstrap": "node init/bootstrap.js",
     "seed": "node init/seed-vaults.js",
     "verify": "node init/verify.js",
     "init": "node init/bootstrap.js && node init/seed-vaults.js && node init/verify.js",
-    "mcp": "node mcp/server.js"
+    "mcp": "node mcp/server.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
