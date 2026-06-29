@@ -12,6 +12,10 @@
 | [architecture/complex-css.md](architecture/complex-css.md) | | 2026-06-29 |
 | [architecture/react-ts-vite-stack.md](architecture/react-ts-vite-stack.md) | | 2026-06-29 |
 | [architecture/structure-and-state.md](architecture/structure-and-state.md) | | 2026-06-29 |
+| [art-direction/color-and-light.md](art-direction/color-and-light.md) | | 2026-06-29 |
+| [art-direction/composition-and-flow.md](art-direction/composition-and-flow.md) | | 2026-06-29 |
+| [art-direction/craft-detail-and-cohesion.md](art-direction/craft-detail-and-cohesion.md) | | 2026-06-29 |
+| [art-direction/masters-and-principles.md](art-direction/masters-and-principles.md) | | 2026-06-29 |
 | [design-system/component-checklist.md](design-system/component-checklist.md) | | 2026-06-29 |
 | [design-system/tokens.md](design-system/tokens.md) | | 2026-06-29 |
 | [frontend.md](frontend.md) | | 2026-06-29 |
@@ -21,6 +25,8 @@
 | [state-management/storage-rules.md](state-management/storage-rules.md) | | 2026-06-29 |
 | [sub-agents/3d-designer.md](sub-agents/3d-designer.md) | | 2026-06-29 |
 | [sub-agents/api-request-handler.md](sub-agents/api-request-handler.md) | | 2026-06-29 |
+| [sub-agents/art-director.md](sub-agents/art-director.md) | | 2026-06-29 |
+| [sub-agents/atelier-curator.md](sub-agents/atelier-curator.md) | | 2026-06-29 |
 | [sub-agents/component-creator.md](sub-agents/component-creator.md) | | 2026-06-29 |
 | [sub-agents/contrast-specialist.md](sub-agents/contrast-specialist.md) | | 2026-06-29 |
 | [sub-agents/layout-architect.md](sub-agents/layout-architect.md) | | 2026-06-29 |

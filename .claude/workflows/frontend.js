@@ -3,11 +3,13 @@ export const meta = {
   description: 'Frontend domain agent — UI design, 3D scenes, components, API wiring, security checks',
   phases: [
     { title: 'Load Context', detail: 'Read storage rules, security rules, prior decisions' },
+    { title: 'Art Direction', detail: 'art-director sets the vision — composition, palette, flow, cohesion (eye of the masters)' },
     { title: 'UI Design', detail: 'ui-designer defines layout and design system usage' },
     { title: '3D Design', detail: '3d-designer architects scene, physics, shaders, scroll animation', model: 'claude-opus-4-8' },
     { title: 'Complex CSS', detail: 'layout / positioning / contrast specialists handle parent-child CSS' },
     { title: 'Components', detail: 'component-creator builds component files' },
     { title: 'API Wiring', detail: 'api-request-handler wires components to backend contracts' },
+    { title: 'Atelier Review', detail: 'atelier-curator judges the whole — do all parts merge into one masterpiece?' },
     { title: 'Security Check', detail: 'security-checker audits token placement, CSP, storage' },
   ],
 }
@@ -64,6 +66,69 @@ const context = await agent(
 
 log(`Loaded ${context.decisions.length} decisions. API contracts available: ${contractExports.length}`)
 
+// ─── Phase: Art Direction ─────────────────────────────────────────────────────
+// Before any layout, the art-director sets the artistic vision with the eye of the
+// masters — focal point, palette philosophy, visual flow, signature detail, and the
+// cohesion rules that bind every component into one unified piece. This brief threads
+// into every downstream design sub-agent so the whole screen is composed, not assembled.
+phase('Art Direction')
+
+const artDirection = await agent(
+  `You are the art-director sub-agent of the Frontend Agent. You design with the eye of the great\n` +
+  `masters — da Vinci's composition and sfumato, the Bauhaus, Dieter Rams's restraint. You see each\n` +
+  `component as a finished object AND how all components must merge into one unanimous, timeless piece.\n\n` +
+  `Task: "${taskText}"\n` +
+  `Project: ${projectPath}\n` +
+  `USER DESIGN PREFERENCES (honour these — the vision serves them, never overrides them):\n${designBrief}\n\n` +
+  `Read your art-direction knowledge base FIRST, then apply it:\n` +
+  `- ${AGENTS_DIR}/agents/frontend/vault/art-direction/masters-and-principles.md\n` +
+  `- ${AGENTS_DIR}/agents/frontend/vault/art-direction/color-and-light.md\n` +
+  `- ${AGENTS_DIR}/agents/frontend/vault/art-direction/composition-and-flow.md\n` +
+  `- ${AGENTS_DIR}/agents/frontend/vault/art-direction/craft-detail-and-cohesion.md\n\n` +
+  `Examine the existing frontend at ${projectPath}. If it already has a strong design language, your\n` +
+  `job is to elevate and stay coherent with it — not to impose a clashing new style.\n\n` +
+  `Define the artistic direction for this feature:\n` +
+  `1. NORTH STAR — one sentence naming the feeling and intent of this piece (the single idea every choice serves).\n` +
+  `2. FOCAL POINT — the one thing the eye must land on first, and how everything else yields to it.\n` +
+  `3. PALETTE PHILOSOPHY — harmony strategy (mono/analogous/complementary/triadic), the 60/30/10 split, where the single accent is spent, light direction. Respect the user's colours if given.\n` +
+  `4. COMPOSITION & FLOW — grid/proportion (modular scale, thirds/golden ratio), the eye path (Z/F), leading lines, intentional negative space.\n` +
+  `5. SIGNATURE DETAIL — the one crafted detail that makes it feel authored (a motion signature, a corner/shadow language, a typographic touch).\n` +
+  `6. COHESION RULES — the shared voice EVERY component must obey (radius, shadow, spacing scale, type scale, motion easing, colour temperature) so the parts read as one hand.\n` +
+  `7. MOTION INTENT — how motion choreographs the eye (easing, stagger), respecting prefers-reduced-motion.\n\n` +
+  `Be specific and buildable — concrete values, not adjectives. This brief is law for every sub-agent that follows.\n\n` +
+  `Return JSON: { northStar, focalPoint, palettePhilosophy, composition, signatureDetail, cohesionRules: [string], motionIntent }`,
+  {
+    label: 'art-director',
+    phase: 'Art Direction',
+    schema: {
+      type: 'object',
+      required: ['northStar', 'focalPoint', 'palettePhilosophy', 'composition', 'cohesionRules'],
+      properties: {
+        northStar:         { type: 'string' },
+        focalPoint:        { type: 'string' },
+        palettePhilosophy: { type: 'string' },
+        composition:       { type: 'string' },
+        signatureDetail:   { type: 'string' },
+        cohesionRules:     { type: 'array', items: { type: 'string' } },
+        motionIntent:      { type: 'string' },
+      },
+    },
+  }
+)
+
+log(`Art direction set — north star: ${(artDirection.northStar || '').slice(0, 80)}`)
+
+// Threaded into every downstream design sub-agent so the whole stays composed and cohesive.
+const artContext =
+  `\n\nART DIRECTION (the vision — every choice must serve this; the masters' eye):\n` +
+  `- North star: ${artDirection.northStar}\n` +
+  `- Focal point: ${artDirection.focalPoint}\n` +
+  `- Palette: ${artDirection.palettePhilosophy}\n` +
+  `- Composition & flow: ${artDirection.composition}\n` +
+  (artDirection.signatureDetail ? `- Signature detail: ${artDirection.signatureDetail}\n` : '') +
+  `- Cohesion rules (every component obeys these): ${(artDirection.cohesionRules || []).join('; ')}\n` +
+  (artDirection.motionIntent ? `- Motion intent: ${artDirection.motionIntent}\n` : '')
+
 // ─── Phase: UI Design ─────────────────────────────────────────────────────────
 phase('UI Design')
 
@@ -72,14 +137,16 @@ const uiDesign = await agent(
   `Task: "${taskText}"\n` +
   `Project: ${projectPath}\n` +
   `Design tokens: ${context.tokens || 'Use CSS custom properties from :root'}\n\n` +
-  `USER DESIGN PREFERENCES (from clarification — follow these exactly):\n${designBrief}\n\n` +
+  `USER DESIGN PREFERENCES (from clarification — follow these exactly):\n${designBrief}\n` +
+  `${artContext}\n` +
   `Examine the existing frontend at ${projectPath} to understand the current design system.\n\n` +
-  `Design the UI for this feature:\n` +
+  `Design the UI for this feature, realising the art direction above:\n` +
   `1. What pages/views are needed?\n` +
   `2. What layout pattern fits (full-page, modal, sidebar, card)? Apply the navigation preference above.\n` +
-  `3. Which design tokens / colors apply? Use the user's specified colors if provided.\n` +
+  `3. Which design tokens / colors apply? Use the user's specified colors if provided, within the palette philosophy.\n` +
   `4. What's the responsive behavior? If mobile: true was specified, design mobile-first.\n` +
-  `5. What loading, empty, and error states are needed?\n\n` +
+  `5. What loading, empty, and error states are needed? (Design them — the empty state is a first impression.)\n` +
+  `6. How does this view honour the focal point and eye-path from the art direction?\n\n` +
   `Return JSON: { pages: [{name,type:"page"|"layout"|"widget"|"form",description,responsive:true}], designDecisions: [string] }`,
   {
     label: 'ui-designer',
@@ -109,6 +176,8 @@ if (use3D) {
     `USER DESIGN PREFERENCES:\n${designBrief}\n` +
     (physicsHint    ? `${physicsHint}\n` : '') +
     (scrollAnimHint ? `${scrollAnimHint}\n` : '') +
+    `${artContext}` +
+    `\nLet the art direction guide mood, palette, light, motion, and composition of the scene — the 3D should feel like part of the same authored piece, not a separate tech demo.\n` +
     `\nExamine the project at ${projectPath} to understand the existing tech stack before making library choices.\n\n` +
     `Design the complete 3D web experience. Cover ALL of the following sections:\n\n` +
 
@@ -277,10 +346,12 @@ const cssNote = `${AGENTS_DIR}/agents/frontend/vault/architecture/complex-css.md
 const cssSpecs = await parallel([
   () => agent(
     `You are the layout-architect sub-agent of the Frontend Agent.\n\n` +
-    `Task: "${taskText}"\nProject: ${projectPath}\nPages: ${JSON.stringify(uiDesign.pages)}\n\n` +
+    `Task: "${taskText}"\nProject: ${projectPath}\nPages: ${JSON.stringify(uiDesign.pages)}\n` +
+    `${artContext}\n` +
     `Read ${cssNote} for the rules.\n\n` +
     `Own parent-child CSS and layout: container/child relationships, CSS Grid and Flexbox structure, ` +
-    `responsive breakpoints, and how nested elements size and align. Flag any fragile parent-child dependency.\n\n` +
+    `responsive breakpoints, and how nested elements size and align. Build the grid as the armature of the ` +
+    `composition above — proportion, spacing rhythm, and intentional negative space. Flag any fragile parent-child dependency.\n\n` +
     `Return JSON: { rules: [string], gridFlexPlan: string, responsive: string }`,
     { label: 'layout-architect', phase: 'Complex CSS', model: 'sonnet',
       schema: { type: 'object', required: ['rules'], properties: { rules: { type: 'array', items: { type: 'string' } }, gridFlexPlan: { type: 'string' }, responsive: { type: 'string' } } } }
@@ -297,10 +368,13 @@ const cssSpecs = await parallel([
   ),
   () => agent(
     `You are the contrast-specialist sub-agent of the Frontend Agent.\n\n` +
-    `Task: "${taskText}"\nProject: ${projectPath}\nDesign brief: ${designBrief}\n\n` +
+    `Task: "${taskText}"\nProject: ${projectPath}\nDesign brief: ${designBrief}\n` +
+    `${artContext}\n` +
     `Read ${cssNote} for the rules.\n\n` +
     `Own color contrast and visual accessibility: ensure WCAG AA (4.5:1 text, 3:1 large/UI), focus-visible states, ` +
-    `contrast across light and dark themes, and that design-token colors meet ratios. List any token pair that fails and the fix.\n\n` +
+    `contrast across light and dark themes, and that design-token colors meet ratios. Honour the palette philosophy ` +
+    `above — accessibility is the floor, not a reason to flatten the palette; keep the accent precious and legible. ` +
+    `List any token pair that fails and the fix.\n\n` +
     `Return JSON: { rules: [string], failingPairs: [string], focusStates: string }`,
     { label: 'contrast-specialist', phase: 'Complex CSS', model: 'sonnet',
       schema: { type: 'object', required: ['rules'], properties: { rules: { type: 'array', items: { type: 'string' } }, failingPairs: { type: 'array', items: { type: 'string' } }, focusStates: { type: 'string' } } } }
@@ -330,7 +404,9 @@ const components = await agent(
   `- Components import from the api file, never use fetch/axios directly\n` +
   `- Use design tokens (CSS custom properties) — no hardcoded colors\n` +
   `- Include loading, empty, and error states in every data-fetching component\n` +
-  `${threeDContext}${cssContext}\n\n` +
+  `- Obey the cohesion rules from the art direction on EVERY component (one radius/shadow/spacing/type/motion language) so the parts read as one authored piece, not a kit.\n` +
+  `- Craft the detail: optical alignment, one spacing scale, tuned easing, designed empty/focus states.\n` +
+  `${artContext}${threeDContext}${cssContext}\n\n` +
   `Return JSON: { components: [{name,filePath,type,usesAPI:[routePath]}], apiFiles: [string], filesCreated: [string] }`,
   {
     label: 'component-creator',
@@ -381,6 +457,53 @@ const wiring = await agent(
 )
 
 log(`Wired ${wiring.apiBindings.length} API binding(s), ${wiring.stateSlices.length} state slice(s)`)
+
+// ─── Phase: Atelier Review ────────────────────────────────────────────────────
+// The art-director returns as curator to judge the assembled UI as ONE composition:
+// do the parts merge into a unified, intentional piece? Applies final harmony,
+// rhythm, alignment, and cohesion refinements. Advisory — never blocks the pipeline.
+phase('Atelier Review')
+
+const builtFiles = [...components.filesCreated, ...wiring.filesUpdated]
+
+const atelier = await agent(
+  `You are the atelier-curator sub-agent of the Frontend Agent — the art-director returning to judge\n` +
+  `the finished work with the eye of a master. You see each component as its own object AND the screen\n` +
+  `as one composition. Your job: make the parts merge into a single, unanimous, timeless piece.\n\n` +
+  `Task: "${taskText}"\n` +
+  `Project: ${projectPath}\n` +
+  `Files built this session (review and refine ONLY these): ${JSON.stringify(builtFiles)}\n` +
+  `${artContext}\n` +
+  `Read your cohesion reference: ${AGENTS_DIR}/agents/frontend/vault/art-direction/craft-detail-and-cohesion.md\n\n` +
+  `Examine the built files. Judge the whole against the art direction and ask:\n` +
+  `1. Does EVERY component share one voice — radius, shadow, spacing scale, type scale, motion easing, colour temperature?\n` +
+  `2. Is there ONE clear focal point per view, with everything else in support?\n` +
+  `3. Does the eye flow cleanly entry → focal point → action, with no snags or dead ends?\n` +
+  `4. Is spacing on one rhythm? Is alignment optically correct? Are empty/focus/hover states crafted?\n` +
+  `5. Does anything feel assembled-from-a-kit rather than drawn by one hand? Remove or harmonise it.\n\n` +
+  `Apply ONLY high-confidence, behavior-preserving visual refinements directly to the listed files (Edit/Write):\n` +
+  `tighten spacing to the scale, unify radius/shadow/type tokens, fix optical alignment, harmonise motion easing,\n` +
+  `polish empty/focus states. Do NOT change functionality, API wiring, routes, or security-relevant code.\n` +
+  `Where a fix would change behavior or is risky, record it as a recommendation instead of applying it.\n\n` +
+  `Return JSON: { cohesionScore: number (0-10, how unified the piece reads), refinementsApplied: [{file, change}], ` +
+  `recommendations: [string], verdict: string }`,
+  {
+    label: 'atelier-curator',
+    phase: 'Atelier Review',
+    schema: {
+      type: 'object',
+      required: ['cohesionScore', 'refinementsApplied', 'verdict'],
+      properties: {
+        cohesionScore:      { type: 'number' },
+        refinementsApplied: { type: 'array', items: { type: 'object', properties: { file: { type: 'string' }, change: { type: 'string' } } } },
+        recommendations:    { type: 'array', items: { type: 'string' } },
+        verdict:            { type: 'string' },
+      },
+    },
+  }
+)
+
+log(`Atelier — cohesion ${atelier.cohesionScore}/10, ${atelier.refinementsApplied.length} refinement(s) applied`)
 
 // ─── Phase: Security Check ────────────────────────────────────────────────────
 phase('Security Check')
@@ -439,5 +562,13 @@ return {
   securityFlags: security.securityFlags,
   filesChanged: allFiles,
   threeDDesign: threeDDesign || null,
+  artDirection: {
+    northStar:      artDirection.northStar,
+    focalPoint:     artDirection.focalPoint,
+    cohesionRules:  artDirection.cohesionRules,
+    cohesionScore:  atelier.cohesionScore,
+    verdict:        atelier.verdict,
+    recommendations: atelier.recommendations || [],
+  },
   errors:       errorFlags.map(f => `${f.location}: ${f.message}`),
 }

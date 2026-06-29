@@ -7,11 +7,11 @@
 
 ## Talks to
 - **Reads from (upstream):** [[backend]]
-- **Hands off to (downstream):** — (leaf)
+- **Hands off to (downstream):** [[ponytail]]
 - **Validated by:** [[mcpbridge]]
 
 ## Internal pipeline (sub-agents)
-[[ui-designer]] → [[3d-designer]] → [[layout-architect]] → [[positioning-specialist]] → [[contrast-specialist]] → [[component-creator]] → [[api-request-handler]] → [[security-checker]]
+[[art-director]] → [[ui-designer]] → [[3d-designer]] → [[layout-architect]] → [[positioning-specialist]] → [[contrast-specialist]] → [[component-creator]] → [[api-request-handler]] → [[atelier-curator]] → [[security-checker]]
 
 ## Knowledge
 Accumulated decisions and patterns live in this vault (see `INDEX.md`) and in `knowledge.db`.

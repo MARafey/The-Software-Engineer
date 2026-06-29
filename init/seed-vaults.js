@@ -2149,6 +2149,126 @@ The hardest, most bug-prone styling. Three specialists own it and run on every f
 - Verify ratios in BOTH light and dark themes; check token-on-token colour pairs.
 - Always provide a visible \`:focus-visible\` state — never remove outlines without a replacement.
 `);
+// ── Art-direction knowledge base (the mind of the masters) ──
+// The frontend agents don't just follow UI rules — they design with the eye of
+// the great painters, sculptors, and architects. These notes are read by the
+// art-director (sets the vision) and atelier-curator (judges the whole) sub-agents.
+writeNote('frontend', 'art-direction/masters-and-principles.md', `# The Mind of the Masters
+
+> "Art is never finished, only abandoned." — Leonardo da Vinci
+> "The details are not the details. They make the design." — Charles Eames
+
+A great interface is composed, not assembled. Design with the eye of the masters —
+da Vinci, Michelangelo, the Bauhaus, Dieter Rams — then translate that eye into the
+concrete language of the web. Every screen is a canvas with a focal point, a path the
+eye travels, a balance of mass and void, and a single unifying intent.
+
+## The enduring principles (and their web translation)
+| Principle | What the masters knew | How it shows up in UI |
+|-----------|----------------------|------------------------|
+| **Focal point** | Every composition has ONE subject the eye lands on first. | One primary action / hero per view. Everything else yields to it in size, weight, colour. |
+| **Visual hierarchy** | Lead the eye 1 → 2 → 3 through scale, contrast, placement. | Type scale, weight, and spacing encode importance. Nothing competes for first place. |
+| **Proportion** | Golden ratio (~1.618) and rule of thirds make proportion feel inevitable. | Use a modular scale (1.25/1.333/1.618) for type and spacing. Place key elements on thirds, not dead-centre by default. |
+| **Balance** | Symmetry = calm/formal; asymmetry = energy/tension held in equilibrium. | Balance visual weight across the layout — a heavy hero balanced by white space, not crammed corners. |
+| **Negative space** | The void is an active element, not leftover. | Generous, intentional whitespace. Let elements breathe; crowding reads as cheap. |
+| **Rhythm & repetition** | Repeated motifs create unity and tempo. | A consistent spacing scale, corner radius, shadow language, and motion easing repeated everywhere. |
+| **Unity (the whole)** | Every brushstroke serves one painting. | Every component shares one voice. See [[atelier-curator]] — the parts must merge into one piece. |
+
+## Restraint
+The masters removed until nothing more could be removed without collapse (this is the same
+instinct as [[ponytail]], applied to visuals). Decoration that doesn't serve the focal point,
+the hierarchy, or the mood is noise. Boring-but-coherent beats clever-but-fragmented.
+`);
+
+writeNote('frontend', 'art-direction/color-and-light.md', `# Colour & Light
+
+Colour is emotion and structure before it is decoration. Light gives form its third dimension.
+
+## Harmony (choose ONE strategy per piece)
+- **Monochromatic** — one hue, many values. Serene, sophisticated, safest path to "timeless".
+- **Analogous** — neighbours on the wheel. Natural, harmonious, low tension.
+- **Complementary** — opposites. High energy — use one as the dominant, the other ONLY as the accent.
+- **Triadic** — three evenly spaced. Vibrant; let one dominate, the others support.
+
+## The 60 / 30 / 10 rule
+60% dominant (surfaces/background), 30% secondary (supporting blocks), 10% accent (the single
+call-to-action colour). The accent is precious — spend it only on what the eye must find.
+
+## Value & light (chiaroscuro for the screen)
+- **Value does the work, hue gets the credit.** Establish a clear light→dark value ladder first; a
+  layout that reads in greyscale will read in colour.
+- **One light source.** Shadows and highlights imply a consistent light direction. Elevation = soft,
+  directional shadow; never random drop-shadows pointing different ways.
+- **Depth via value, not just blur.** Closer = lighter/higher-contrast; further = lower-contrast, cooler.
+
+## Timeless palettes
+- Warm neutrals + a single saturated accent age better than many loud colours.
+- Desaturate slightly toward a paper/canvas off-white (\`#FAF9F6\`) instead of pure \`#FFFFFF\` for warmth.
+- Pure black is rare in nature — prefer a deep near-black with a hint of the accent hue.
+
+> Accessibility is not the enemy of beauty: WCAG AA contrast (see [[contrast-specialist]]) is the
+> floor, not the ceiling. A masterful palette is both moving AND legible.
+`);
+
+writeNote('frontend', 'art-direction/composition-and-flow.md', `# Composition & Flow
+
+How the eye moves through the piece. The masters choreographed the gaze; so do we.
+
+## Leading the eye
+- **Reading gravity**: Western eyes enter top-left and travel in a **Z** (landing pages) or **F**
+  (text-dense screens). Place the brand/anchor where the eye enters, the CTA where it rests.
+- **Leading lines**: edges, gradients, imagery, and even gaze-direction in photos point toward the
+  focal point. Nothing should lead the eye OFF the screen or into a dead end.
+- **Gestalt laws** (how the mind groups what it sees):
+  - *Proximity* — related things sit close; unrelated things get space. Spacing IS grouping.
+  - *Similarity* — same shape/colour/size reads as "same kind".
+  - *Continuity* — the eye follows the smoothest path; align elements onto shared lines.
+  - *Closure* — the mind completes implied shapes; you don't need to draw every border.
+  - *Common region* — a shared container binds elements into one group.
+
+## Grid as armature
+A grid is the under-drawing beneath the painting — invisible, load-bearing. Choose a column system
+(4/8/12) and a baseline rhythm, then let elements snap to it. Break the grid deliberately, once, to
+create the focal accent — never by accident.
+
+## Motion as choreography
+Animation is timing, not decoration. Ease-out for entrances (fast→settle), ease-in for exits.
+Stagger related elements (~40–80ms) so groups arrive as a phrase, not a crowd. Motion should clarify
+hierarchy and spatial relationships — guide the eye, never fight it. Respect \`prefers-reduced-motion\`.
+`);
+
+writeNote('frontend', 'art-direction/craft-detail-and-cohesion.md', `# Craft, Detail & the Unified Whole
+
+This is where good becomes timeless — and where the parts become one piece.
+
+## Obsessive detail (the masters' finish)
+- **Optical alignment over mathematical** — centre by how it *looks*, not just by pixels (triangles,
+  glyphs, and icons often need a nudge to feel centred).
+- **Spacing rhythm** — spacing comes from ONE scale (e.g. 4/8/12/16/24/32/48). Arbitrary gaps read as
+  sloppiness even when the user can't name why.
+- **Typographic care** — set line-height for the measure (~1.5 body, tighter for display); cap line
+  length at 60–75 characters; kern/track headlines; use real quotes and dashes; never centre long text.
+- **Edge & corner discipline** — one corner-radius language; consistent border weights; hairlines, not heavy rules.
+- **State craft** — hover, focus-visible, active, disabled, loading, empty, and error states are all
+  designed, not defaults. The empty state is a first impression, not an afterthought.
+- **Micro-motion** — easing curves are tuned (custom cubic-bezier), durations are felt (120–240ms for
+  most UI), nothing is linear unless it's a spinner.
+
+## Cohesion — seeing each component AND the whole
+Design each component as a finished object in its own right; then step back and judge the screen as a
+single composition. The questions the **atelier-curator** asks:
+- Does every component share the SAME voice — radius, shadow, spacing, type, motion, colour temperature?
+- Is there ONE focal point per view, with everything else in support?
+- Do the parts feel inevitable together, as if drawn by one hand — or assembled from a kit?
+- Remove any element: is the composition weaker? If not, it was noise (see [[ponytail]]).
+- Does the eye flow cleanly from entry → focal point → action, with no snags?
+
+The goal: not a set of correct components, but **one unanimous piece** — harmonious, intentional,
+and unmistakably authored. A design someone would stop and admire.
+`);
+
+log.ok('frontend art-direction knowledge base seeded');
+
 log.ok('frontend complex-css architecture seeded');
 
 // ─── Ponytail vault ───────────────────────────────────────────────────────────
@@ -2249,15 +2369,17 @@ const GRAPH = {
   frontend: {
     title: 'Frontend Agent',
     role: 'Builds components, wires API calls, enforces client security.',
-    upstream: ['backend'], downstream: [], validators: ['mcpbridge'],
+    upstream: ['backend'], downstream: ['ponytail'], validators: ['mcpbridge'],
     subAgents: [
-      ['ui-designer', 'Defines layout and design-system usage.', '3d-designer'],
+      ['art-director', 'Sets the artistic vision before any layout: focal point, palette philosophy, composition & visual flow, signature detail, and the cohesion rules that bind every component into one piece. Designs with the eye of the masters (da Vinci, Bauhaus, Rams).', 'ui-designer'],
+      ['ui-designer', 'Defines layout and design-system usage, guided by the art direction.', '3d-designer'],
       ['3d-designer', 'Architects Three.js/WebGL scenes (Opus model).', 'layout-architect'],
       ['layout-architect', 'Owns parent-child CSS: Grid/Flex layout, container relationships, responsive structure.', 'positioning-specialist'],
       ['positioning-specialist', 'Owns positioning, stacking/z-index, overflow and scroll containers.', 'contrast-specialist'],
       ['contrast-specialist', 'Owns colour contrast and visual accessibility (WCAG AA+), focus states.', 'component-creator'],
       ['component-creator', 'Builds the component files.', 'api-request-handler'],
-      ['api-request-handler', 'Wires components to backend contracts.', 'security-checker'],
+      ['api-request-handler', 'Wires components to backend contracts.', 'atelier-curator'],
+      ['atelier-curator', 'Judges the assembled UI as one composition — does every part merge into a unified masterpiece? Applies final refinements for rhythm, alignment, harmony, and cohesion.', 'security-checker'],
       ['security-checker', 'Audits token placement, CSP, and storage.', null],
     ],
   },

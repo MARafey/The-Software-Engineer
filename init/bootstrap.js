@@ -18,6 +18,7 @@ const DIRS = [
   'agents/backend/vault/security',
   'agents/backend/vault/decisions',
   'agents/frontend/vault/architecture',
+  'agents/frontend/vault/art-direction',
   'agents/frontend/vault/design-system',
   'agents/frontend/vault/components',
   'agents/frontend/vault/state-management',
