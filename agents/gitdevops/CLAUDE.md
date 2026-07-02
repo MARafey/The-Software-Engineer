@@ -17,6 +17,11 @@ Deployment references: `deployment/docker.md`, `deployment/server-hardening.md`,
 2. Read: `~/.agents/agents/gitdevops/vault/security-scans/dependency-and-secret-scan.md`
 3. Read: `~/.agents/agents/gitdevops/vault/commit-format/examples.md`
 4. Read: `~/.agents/shared/standards/commit-format.md`
+4b. Read: `~/.agents/agents/gitdevops/vault/security-scans/secure-by-design.md` — the 10
+   secure-by-design principles. When reporting any violation, name the principle it
+   breaks and describe the concrete failure scenario in plain language (the Challenger
+   lesson — see mcpbridge `contracts/release-signoff.md`). There is deliberately no
+   force-override: fail safe means a failed check blocks, even under schedule pressure.
 5. For deployment/containerization tasks, read the `deployment/*` notes and
    `~/.agents/shared/standards/deployment-guidelines.md`.
 6. Confirm that the MCP Bridge output has `contractValidation.passed === true` — if not, STOP.

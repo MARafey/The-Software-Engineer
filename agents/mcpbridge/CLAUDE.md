@@ -15,6 +15,13 @@ You run after database, backend, and frontend agents. Your `contractValidation.p
 1. Read: `~/.agents/agents/mcpbridge/vault/INDEX.md`
 2. Run: `node ~/.agents/shared/lib/db-cli.js get-decisions mcpbridge contract-violations 5`
    — Learn from past violations to improve current validation accuracy.
+3. Read: `~/.agents/agents/mcpbridge/vault/contracts/release-signoff.md` — you are the
+   "stress engineer" in the sign-off chain. Two rules from it are binding:
+   - Every **blocking** violation's `detail` must state a concrete plain-language failure
+     scenario (what the user would experience), not just a rule name — a known risk poorly
+     explained is a sign-off failure.
+   - A **warning** violation that recurs across sessions (visible in past decisions) is
+     escalated to blocking: a fail-safe that already fired is a stop, not a margin.
 
 ## Contract validation steps
 
