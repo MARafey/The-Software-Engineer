@@ -11,6 +11,7 @@
 | [architecture/python-server-execution.md](architecture/python-server-execution.md) | | 2026-07-02 |
 | [backend.md](backend.md) | | 2026-07-02 |
 | [patterns/ai-agent-prompt-template.md](patterns/ai-agent-prompt-template.md) | | 2026-07-02 |
+| [patterns/ai-model-lifecycle.md](patterns/ai-model-lifecycle.md) | | 2026-07-02 |
 | [patterns/background-jobs.md](patterns/background-jobs.md) | | 2026-07-02 |
 | [patterns/db-integration-sqlalchemy-alembic.md](patterns/db-integration-sqlalchemy-alembic.md) | | 2026-07-02 |
 | [patterns/error-handling-logging.md](patterns/error-handling-logging.md) | | 2026-07-02 |

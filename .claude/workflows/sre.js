@@ -61,6 +61,12 @@ const diagnosis = await agent(
   `For each failure signal: symptom → rootCause → evidence → suggestedFix → severity (critical|major|minor). ` +
   `Diagnose, don't describe.\n` +
   `3. IaC review — if the project has Dockerfile/compose/k8s/Ansible/CI files, review them against the runbook and list them.\n` +
+  ((backendOutput && backendOutput.aiAgents && backendOutput.aiAgents.length)
+    ? `3b. AI model monitoring — this session shipped AI agents (${JSON.stringify(backendOutput.aiAgents.map(a => a.name))}). ` +
+      `Apply ${AGENTS_DIR}/agents/sre/vault/runbooks/model-drift-monitoring.md: check for drift signals ` +
+      `(schema-validation failure trends, guardrail-refusal rates), and add a feedback item recommending ` +
+      `drift alerts / a retraining trigger for each AI agent.\n`
+    : '') +
   `4. Feedback — for each finding, write a note addressed to the agent that should act on it next cycle ` +
   `(usually "requirements"; use the domain agent name for domain-specific debt).\n\n` +
   `Return JSON: { healthChecks: [{name, status: "pass"|"warn"|"fail", detail}], ` +

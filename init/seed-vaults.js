@@ -429,6 +429,47 @@ Artifacts produced per AI agent (written into the target project):
 - \`src/ai/<agent-name>/schema.json\` — the strict output schema used by the validation loop.
 `);
 
+writeNote('backend', 'patterns/ai-model-lifecycle.md', `# AI Model Lifecycle
+
+Used by the **prompt-engineer** sub-agent whenever a feature ships an AI model or
+LLM-backed capability. The lifecycle is: plan → data → develop → evaluate → deploy →
+monitor → retire. Build covers the first five; monitoring and retirement are owned by
+the [[sre]] agent (see its drift-monitoring runbook).
+
+## 1. Plan
+Define the use case, the users, and the conversations/outputs expected BEFORE choosing
+anything. "What must this model never do" is part of the plan (no glue-instead-of-cheese
+recommendations).
+
+## 2. Data — good AI starts with good data
+- Tailored to the use case and from reputable, traceable sources — every datum traceable
+  back to its origin.
+- Diverse backgrounds and perspectives represented.
+- Cleanse: remove PII, deduplicate, fill/replace missing values, standardize format.
+- Run bias checks; if unbalanced, synthetic data generation is an accepted way to
+  rebalance — record that it was used.
+
+## 3. Develop
+- Prefer small specialized models (mixture-of-experts style composition) over one giant
+  generalist when it cuts computational and environmental cost at equal quality.
+- Micro-agents with one responsibility, per \`patterns/ai-agent-prompt-template.md\`.
+
+## 4. Evaluate & govern
+- Measure accuracy, fairness, and bias across demographic groups; check output diversity.
+- Brainstorm edge cases and test them explicitly.
+- Disparities found → adjust the algorithm or augment with synthetic data, then re-test.
+- Compliance is a design input (e.g. EU AI Act) — record the governance decision in the
+  decisions table.
+
+## 5. Deploy
+Repeatable, automated, secure — containerized, config from env, no credentials in code
+(gitdevops enforces this).
+
+## 6+ Monitor / retire (handoff)
+Declare in \`aiAgents[]\` what the SRE agent should watch: drift signals, throughput,
+latency, error rates, and the retraining trigger. Retired models are archived, not deleted.
+`);
+
 log.ok('backend vault seeded');
 
 // ─── Frontend vault ───────────────────────────────────────────────────────────
@@ -1586,6 +1627,30 @@ writeNote('gitdevops', 'deployment/repo-docs.md', `# Repository Documentation
 - **Code documentation**: maintain \`.md\` docs for the codebase.
 `);
 
+writeNote('gitdevops', 'security-scans/secure-by-design.md', `# 10 Principles of Secure by Design
+
+Security is baked in, not bolted on — a vulnerability found at deployment costs far more
+than one prevented at design. These principles are design inputs for EVERY domain agent;
+gitdevops verifies them at the gate. Shift left.
+
+| # | Principle | What it means here |
+|---|-----------|--------------------|
+| 1 | **Least privilege** | No more access than the job needs, only for as long as needed. Maps to the vault ACL (write-own-only), read-only AI SQL tools, per-route \`authRequired\`, scoped API keys. |
+| 2 | **Defense in depth** | Never rely on one mechanism: validation middleware + auth middleware + parameterized queries + CSP + the pre-commit scan all overlap on purpose. |
+| 3 | **Fail safe** | On failure, land in the secure position: the bridge BLOCKS the commit when validation fails; auth middleware rejects on any token error (401, never a pass-through 500); a broken check never defaults to "allow". |
+| 4 | **KISS / economy of mechanism** | Complexity is the enemy of security — the ponytail agent exists for this reason. Fewer components, fewer twists, fewer vulnerabilities. |
+| 5 | **Separation of duties** | No single actor releases code: designer ≠ checker. The agent that writes code never signs its own commit — bridge validates, gitdevops commits (see mcpbridge \`contracts/release-signoff.md\`). |
+| 6 | **Open design** | No security by obscurity. Kerckhoffs's principle: the only secret is the key/credential (in env vars), never the mechanism. Document how auth works; hide only secrets. |
+| 7 | **Segmentation** | Isolate blast radius: per-agent vaults + ACL, feature folders, separate DB users per service, network segmentation in deployment. A fire in one unit must not burn the building. |
+| 8 | **Usability (human factors)** | Security that's too hard to use gets bypassed (the password sticky note). Prefer SSO/managed secrets over 32-char rotate-monthly rules; make the secure path the easy path. |
+| 9 | **Minimize attack surface** | Fewer external interfaces, no unneeded remote access, fewer components. Every route, port, and dependency added is target area. |
+| 10 | **Secure by default** | Out of the box: only required features on, no default passwords (must-supply at setup), no default admin IDs, deny-first CORS/firewall rules. |
+
+Rule of use: when reviewing a design or a diff, name the principle a finding violates —
+it makes the risk explainable to non-engineers (see the Challenger lesson in the
+release sign-off note).
+`);
+
 log.ok('gitdevops vault seeded');
 
 // ─── MCP Bridge vault ─────────────────────────────────────────────────────────
@@ -1626,6 +1691,39 @@ async function request(endpoint, opts = {}) {
 
 module.exports = { request };
 \`\`\`
+`);
+
+writeNote('mcpbridge', 'contracts/release-signoff.md', `# Release Sign-off Discipline
+
+Borrowed from aerospace design engineering: a drawing is never released by the person
+who drew it. It passes designer → independent checker → stress engineer → manufacturing
+engineer → certified releaser, and each signature means "I verified this against MY
+discipline", not "someone upstream probably checked".
+
+## The pipeline's sign-off chain
+| Aerospace role | Pipeline equivalent | Verifies |
+|----------------|--------------------|----------|
+| Designer | domain agents | the change itself |
+| Checker | ponytail | standards, over-engineering |
+| Stress engineer | mcpbridge | the loads: cross-domain contracts hold |
+| Manufacturing | testing | it can actually be exercised (collection runs) |
+| Certified releaser | gitdevops | security scan, then — and only then — commit |
+
+## The Challenger lessons (engineering ethics)
+1. **A known risk, poorly explained, is a sign-off failure.** The O-ring engineers were
+   right and presented numbers; management heard "acceptable risk". Feynman's ice-water
+   demo — the rubber-band explanation — is the standard: every blocking violation must
+   state a concrete failure scenario in plain language ("this binding calls a route that
+   does not exist; the page will render and every save will silently fail"), not just a
+   rule name and a count.
+2. **Never sign under schedule pressure.** Deadlines and sponsor pressure do not change
+   physics. If validation fails, the pipeline stops — there is no force-override on the
+   bridge or the security scan by design (fail safe).
+3. **A fail-safe that already fired is a stop, not a margin.** The second O-ring was a
+   backup, and it was already eroding on prior flights. A warning-severity violation
+   recurring across sessions gets escalated to blocking, not tolerated as normal.
+4. **Traceability.** Every release decision is recorded (decisions table, scan-results,
+   contract notes) so the next session can see what was known and when.
 `);
 
 log.ok('mcpbridge vault seeded');
@@ -2472,6 +2570,34 @@ Ansible, CI pipelines), verify:
 
 Record each artifact in \`iacArtifacts[]\`. Do not create infrastructure the task didn't
 ask for — report gaps as feedback instead.
+`);
+
+writeNote('sre', 'runbooks/model-drift-monitoring.md', `# Model Drift Monitoring & Retirement
+
+When a session ships AI features (\`BackendOutput.aiAgents[]\` is non-empty), the operate
+phase owns the tail of the AI model lifecycle: monitor → retrain → retire.
+
+## Drift
+Drift is when a model stops performing the way it once did — inputs shift, the world
+changes, quality decays silently. Watch for it routinely, not reactively:
+- Compare guardrail-refusal rates and schema-validation failure rates across sessions
+  (rising failures in the validation loop = drift signal).
+- Check fairness didn't decay: outputs stay balanced across the groups checked at
+  evaluation time.
+
+## Performance metrics
+Throughput, latency, and error rates for every AI-backed route — these belong in the
+same outcome-metrics report as the rest of the session, and trends matter more than
+single values.
+
+## Retraining
+Plan for periodic retraining as feedback: recommend automated alerts + a retraining
+pipeline trigger when drift signals cross a threshold. This is a \`feedback[]\` item for
+requirements — the pipeline never retrains anything itself.
+
+## Retirement
+A model no longer needed is archived (prompt, schema, eval results, decision history),
+never just deleted — it can be built from later. Record the retirement as a decision.
 `);
 
 log.ok('sre vault seeded');

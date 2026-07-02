@@ -11,3 +11,4 @@
 | [gitdevops.md](gitdevops.md) | | 2026-07-02 |
 | [security-scans/checklist.md](security-scans/checklist.md) | | 2026-07-02 |
 | [security-scans/dependency-and-secret-scan.md](security-scans/dependency-and-secret-scan.md) | | 2026-07-02 |
+| [security-scans/secure-by-design.md](security-scans/secure-by-design.md) | | 2026-07-02 |
