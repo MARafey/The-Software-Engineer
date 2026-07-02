@@ -2,7 +2,7 @@
 
 A multi-agent system that automates the full software development lifecycle — as a **Claude Code plugin** (the `/software-engineer` command) and as a **cross-IDE MCP server** (Cursor, Windsurf, VS Code, and other MCP editors).
 
-One command. Every agent runs in sequence — database schema, backend routes, frontend components, Postman tests, inbound/outbound call systems, security scan, git commit. Each agent has its own SQLite knowledge base and Obsidian vault that grows smarter with every session.
+One command. Every agent runs in sequence — requirements spec, database schema, backend routes, frontend components, Postman tests, inbound/outbound call systems, simplification pass, contract validation, security scan, git commit, and a post-release SRE review that feeds the next cycle. Each agent has its own SQLite knowledge base and Obsidian vault that grows smarter with every session.
 
 ---
 
@@ -38,7 +38,7 @@ That's it. Run `/software-engineer` — on first use it clones this repo to `~/.
 
 Other commands:
 ```
-/software-engineer test         — run 42 health checks, verify install is working (no files modified)
+/software-engineer test         — run 56 health checks, verify install is working (no files modified)
 /software-engineer onboard      — force re-scan of current project (auto-runs on first use)
 /software-engineer status       — show recent sessions
 /software-engineer update       — pull latest version
@@ -81,21 +81,90 @@ If you share a mockup image or screenshot, it reads it and only asks about the p
 
 **First use on any project:** the system automatically scans your entire codebase before doing anything — routes, components, schema, conventions, security posture. This runs once per project and is stored in the agent knowledge bases. Every future session starts with that context already loaded.
 
-Seven agents then run in dependency order:
+The pipeline mirrors the full software delivery lifecycle — requirements → design → build → test → release → operate — with a feedback loop from operations back into requirements:
 
-```
-[onboard — first use only] → database → backend → frontend + testing + calls (parallel) → bridge → git
+```mermaid
+flowchart TD
+    U(["👤 You<br/>/software-engineer &lt;task&gt;"]) --> O["🧠 Orchestrator<br/>classify · sequence · pass contracts"]
+
+    O --> ONB["🔍 Onboard<br/><i>first use only — deep codebase scan</i>"]
+    ONB --> REQ
+
+    subgraph PLAN["📋 Plan"]
+        REQ["📝 Requirements<br/>signals → user stories → spec"]
+    end
+
+    subgraph BUILD["🏗️ Build"]
+        DB[("🗄️ Database<br/>tables · migrations · indexes")]
+        BE["⚙️ Backend<br/>routes · services · AI micro-agents"]
+        FE["🎨 Frontend<br/>components · art direction · 3D"]
+        TEST["🧪 Testing<br/>Postman: positive · negative · auth"]
+        CALLS["📞 Calls<br/>IVR · campaigns · compliance"]
+    end
+
+    subgraph GATE["✅ Refine & Gate"]
+        PONY["✂️ Ponytail<br/>trims over-engineering<br/><i>advisory — never blocks</i>"]
+        BRIDGE["🌉 MCP Bridge<br/>cross-domain contract validation<br/>🚫 blocks commit on violation"]
+    end
+
+    subgraph SHIP["🚀 Release & Operate"]
+        GIT["🔐 Git/DevOps<br/>10-point security scan → branch → commit"]
+        SRE["📡 SRE<br/>health · root-cause · drift · metrics<br/><i>advisory — never blocks</i>"]
+    end
+
+    REQ -->|spec + stories| DB
+    DB -->|DatabaseOutput| BE
+    BE -->|BackendOutput| FE
+    BE -->|routes| TEST
+    BE --> CALLS
+    DB --> CALLS
+    FE & TEST & CALLS --> PONY
+    PONY --> BRIDGE
+    BRIDGE -->|"passed ✔"| GIT
+    BRIDGE -.->|"violations ✖ — session blocked"| O
+    GIT --> SRE
+    SRE -.->|"feedback closes the loop"| REQ
+
+    style PLAN fill:#e8f0fe,stroke:#4285f4
+    style BUILD fill:#e6f4ea,stroke:#34a853
+    style GATE fill:#fef7e0,stroke:#f9ab00
+    style SHIP fill:#fce8e6,stroke:#ea4335
 ```
 
-| Agent | Does |
-|-------|------|
-| **Database** | Writes migration SQL, validates foreign keys, adds indexes |
-| **Backend** | A *data-architect* first plans lean data access — a single shared DB pool, disciplined AI queries (read-only, `LIMIT` + filters, no `SELECT *`), caching/lookup tables — then routes, controllers, services with JSDoc |
-| **Frontend** | Builds components, wires API calls, enforces token/storage rules. Dedicated *layout / positioning / contrast* specialists handle complex parent-child CSS. 3D tasks invoke Opus for scene/physics/shader design |
-| **Testing** | Generates Postman collection (positive + negative + auth tests per route) |
-| **Calls** | Inbound IVR flows, outbound dialing campaigns, Twilio/Vonage webhooks, TTS scripts, TCPA/GDPR/DNC compliance |
-| **Bridge** | Validates that frontend bindings and telephony webhooks match backend contracts |
-| **Git** | Runs 10-point security scan, creates feature branch, writes Conventional Commit |
+Frontend, Testing, and Calls run **in parallel** once the backend contract exists.
+
+| Agent | Icon | Does |
+|-------|------|------|
+| **Requirements** | 📝 | Runs first (spec-driven development). Synthesizes signals — your task, project logs/bug reports, last cycle's SRE feedback — into user stories with Given/When/Then acceptance criteria and a spec whose Decisions table pins every choice the other agents would otherwise guess. Undecidable items come back to you as open questions |
+| **Database** | 🗄️ | Writes migration SQL, validates foreign keys, adds indexes |
+| **Backend** | ⚙️ | A *data-architect* first plans lean data access — a single shared DB pool, disciplined AI queries (read-only, `LIMIT` + filters, no `SELECT *`), caching/lookup tables — then routes, controllers, services with JSDoc. AI/LLM features follow a full model lifecycle (traceable data, bias checks, fairness evaluation) |
+| **Frontend** | 🎨 | Builds components, wires API calls, enforces token/storage rules. Dedicated *layout / positioning / contrast* specialists handle complex parent-child CSS. 3D tasks invoke Opus for scene/physics/shader design |
+| **Testing** | 🧪 | Generates Postman collection (positive + negative + auth tests per route), deriving test data from the spec's acceptance criteria |
+| **Calls** | 📞 | Inbound IVR flows, outbound dialing campaigns, Twilio/Vonage webhooks, TTS scripts, TCPA/GDPR/DNC compliance |
+| **Ponytail** | ✂️ | The "lazy senior dev": reviews the generated code and applies behavior-preserving simplifications — never touching validation, security, or accessibility. Advisory, never blocks |
+| **Bridge** | 🌉 | Validates that frontend bindings and telephony webhooks match backend contracts, and that handlers reference real tables. Any blocking violation stops the pipeline before commit |
+| **Git/DevOps** | 🔐 | Runs the 10-point security scan, creates a feature branch, writes a Conventional Commit. No force-override exists by design |
+| **SRE** | 📡 | Runs last (operate phase): health checks, log/root-cause diagnostics, IaC review, model-drift monitoring, and outcome metrics (coverage, violations — never lines of code). Its feedback is what Requirements reads next session |
+
+### Release sign-off — nobody signs their own work
+
+Borrowed from aerospace engineering: a drawing is never released by the person who drew it. Every session passes an independent chain, and each stage verifies its own discipline:
+
+```mermaid
+flowchart LR
+    D["✏️ Designer<br/><i>domain agents</i><br/>make the change"]
+    C["🔎 Checker<br/><i>ponytail</i><br/>standards & simplicity"]
+    S["🏋️ Stress engineer<br/><i>bridge</i><br/>do the contracts hold?"]
+    M["🏭 Manufacturing<br/><i>testing</i><br/>can it be exercised?"]
+    R["🖋️ Certified releaser<br/><i>git/devops</i><br/>security scan → commit"]
+
+    D --> C --> S --> M --> R
+    S -- "violation → STOP 🚫<br/>plain-language failure scenario required" --> X(["no commit"])
+
+    style X fill:#fce8e6,stroke:#ea4335
+```
+
+Two rules are absolute: a failed gate **blocks even under schedule pressure** (there is no force flag), and every blocking violation must explain its concrete failure scenario in plain language — a known risk poorly explained counts as a sign-off failure.
 
 ---
 
@@ -117,14 +186,17 @@ The git agent blocks commits that contain:
 Each agent builds up its own Obsidian-compatible knowledge vault at `~/.agents/agents/<name>/vault/`.
 
 ```
-~/.agents/agents/orchestrator/vault/ Routing, dependency order, per-task session history
-~/.agents/agents/backend/vault/     Express patterns, security rules, route decisions
-~/.agents/agents/frontend/vault/    Design tokens, storage rules, 3D scene patterns, component library
-~/.agents/agents/database/vault/    Schemas, migrations, query optimization notes
-~/.agents/agents/testing/vault/     Postman collections, test reports
-~/.agents/agents/calls/vault/       IVR flows, campaign patterns, TTS scripts, TCPA/GDPR compliance
-~/.agents/agents/gitdevops/vault/   Branch strategy, security scan results
-~/.agents/agents/mcpbridge/vault/   Contract validation history
+~/.agents/agents/orchestrator/vault/  Routing, dependency order, per-task session history
+~/.agents/agents/requirements/vault/  Specs, user stories, signal-synthesis playbooks
+~/.agents/agents/backend/vault/       Express patterns, security rules, AI model lifecycle, route decisions
+~/.agents/agents/frontend/vault/      Design tokens, storage rules, 3D scene patterns, component library
+~/.agents/agents/database/vault/      Schemas, migrations, query optimization notes
+~/.agents/agents/testing/vault/       Postman collections, test reports
+~/.agents/agents/calls/vault/         IVR flows, campaign patterns, TTS scripts, TCPA/GDPR compliance
+~/.agents/agents/ponytail/vault/      Minimal-code philosophy, review history
+~/.agents/agents/gitdevops/vault/     Branch strategy, secure-by-design principles, scan results
+~/.agents/agents/mcpbridge/vault/     Contract validation history, release sign-off discipline
+~/.agents/agents/sre/vault/           Root-cause runbooks, drift monitoring, outcome metrics
 ```
 
 ### See the whole graph
@@ -161,7 +233,33 @@ You install the plugin once (see above). Everything else is handled automaticall
 4. `node init/seed-vaults.js` writes the initial Obsidian vault notes
 5. All future runs go straight to the orchestration workflow
 
-The agents communicate through typed JSON contracts validated against JSON Schema. The bridge agent blocks the git commit if any frontend↔backend or backend↔database contracts are inconsistent.
+### How the agents talk to each other
+
+There are two separate layers — runtime coordination and persistent knowledge — and they never mix:
+
+```mermaid
+flowchart LR
+    subgraph RT["⚡ Coordination (per task, runtime)"]
+        direction TB
+        W1["⚙️ Agent A"] -- "📄 typed JSON contract<br/><i>validated against JSON Schema</i>" --> W2["🎨 Agent B"]
+        W1 & W2 --> LOG[("🗂️ orchestrator.db<br/>session log")]
+    end
+
+    subgraph KN["📚 Knowledge (persistent, grows every session)"]
+        direction TB
+        V["🪨 Obsidian vault per agent<br/><i>[[wikilinked]] into one graph</i>"]
+        K[("💾 knowledge.db per agent<br/>decisions · patterns")]
+        ACL{{"🔒 ACL<br/>write own only ·<br/>read own + upstream"}}
+        ACL --- V
+        ACL --- K
+    end
+
+    RT -.->|"lessons learned are saved as decisions"| KN
+    KN -.->|"each agent loads its context at start"| RT
+```
+
+- **Coordination:** each workflow returns a typed JSON contract (`shared/contracts/*.schema.json`) that the next agent consumes — e.g. frontend binds only to routes the backend actually declared. The bridge agent blocks the git commit if any frontend↔backend or backend↔database contract is inconsistent.
+- **Knowledge:** each agent owns an Obsidian vault + SQLite `knowledge.db`. Access is scoped — an agent writes only its own knowledge and reads only its own plus its upstream dependencies (the SRE and validation agents read everything). Database queries from agents are read-only and result-capped so they can't balloon context.
 
 ---
 
