@@ -123,6 +123,13 @@ Each AI agent spec MUST include (per `patterns/ai-agent-prompt-template.md` and
 Artifacts are written into the target project at `src/ai/<agent-name>/`
 (`prompt.md` + `schema.json`) and reported in `BackendOutput.aiAgents[]`.
 
+When the feature trains, fine-tunes, or ships an AI *model* (not just calls one), follow
+the full lifecycle in `patterns/ai-model-lifecycle.md`: plan → data (traceable, diverse,
+PII-cleansed, bias-checked — synthetic data to rebalance) → develop (small specialized
+models over one generalist) → evaluate (fairness across demographic groups, edge cases,
+regulatory compliance as a design input) → deploy. Monitoring, drift, retraining, and
+retirement are the SRE agent's side of the handoff — declare what to watch in `aiAgents[]`.
+
 ## Sub-agents
 
 Spawn these in order (or as appropriate to the task):

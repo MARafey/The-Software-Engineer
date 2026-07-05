@@ -429,6 +429,47 @@ Artifacts produced per AI agent (written into the target project):
 - \`src/ai/<agent-name>/schema.json\` — the strict output schema used by the validation loop.
 `);
 
+writeNote('backend', 'patterns/ai-model-lifecycle.md', `# AI Model Lifecycle
+
+Used by the **prompt-engineer** sub-agent whenever a feature ships an AI model or
+LLM-backed capability. The lifecycle is: plan → data → develop → evaluate → deploy →
+monitor → retire. Build covers the first five; monitoring and retirement are owned by
+the [[sre]] agent (see its drift-monitoring runbook).
+
+## 1. Plan
+Define the use case, the users, and the conversations/outputs expected BEFORE choosing
+anything. "What must this model never do" is part of the plan (no glue-instead-of-cheese
+recommendations).
+
+## 2. Data — good AI starts with good data
+- Tailored to the use case and from reputable, traceable sources — every datum traceable
+  back to its origin.
+- Diverse backgrounds and perspectives represented.
+- Cleanse: remove PII, deduplicate, fill/replace missing values, standardize format.
+- Run bias checks; if unbalanced, synthetic data generation is an accepted way to
+  rebalance — record that it was used.
+
+## 3. Develop
+- Prefer small specialized models (mixture-of-experts style composition) over one giant
+  generalist when it cuts computational and environmental cost at equal quality.
+- Micro-agents with one responsibility, per \`patterns/ai-agent-prompt-template.md\`.
+
+## 4. Evaluate & govern
+- Measure accuracy, fairness, and bias across demographic groups; check output diversity.
+- Brainstorm edge cases and test them explicitly.
+- Disparities found → adjust the algorithm or augment with synthetic data, then re-test.
+- Compliance is a design input (e.g. EU AI Act) — record the governance decision in the
+  decisions table.
+
+## 5. Deploy
+Repeatable, automated, secure — containerized, config from env, no credentials in code
+(gitdevops enforces this).
+
+## 6+ Monitor / retire (handoff)
+Declare in \`aiAgents[]\` what the SRE agent should watch: drift signals, throughput,
+latency, error rates, and the retraining trigger. Retired models are archived, not deleted.
+`);
+
 log.ok('backend vault seeded');
 
 // ─── Frontend vault ───────────────────────────────────────────────────────────
@@ -1586,6 +1627,30 @@ writeNote('gitdevops', 'deployment/repo-docs.md', `# Repository Documentation
 - **Code documentation**: maintain \`.md\` docs for the codebase.
 `);
 
+writeNote('gitdevops', 'security-scans/secure-by-design.md', `# 10 Principles of Secure by Design
+
+Security is baked in, not bolted on — a vulnerability found at deployment costs far more
+than one prevented at design. These principles are design inputs for EVERY domain agent;
+gitdevops verifies them at the gate. Shift left.
+
+| # | Principle | What it means here |
+|---|-----------|--------------------|
+| 1 | **Least privilege** | No more access than the job needs, only for as long as needed. Maps to the vault ACL (write-own-only), read-only AI SQL tools, per-route \`authRequired\`, scoped API keys. |
+| 2 | **Defense in depth** | Never rely on one mechanism: validation middleware + auth middleware + parameterized queries + CSP + the pre-commit scan all overlap on purpose. |
+| 3 | **Fail safe** | On failure, land in the secure position: the bridge BLOCKS the commit when validation fails; auth middleware rejects on any token error (401, never a pass-through 500); a broken check never defaults to "allow". |
+| 4 | **KISS / economy of mechanism** | Complexity is the enemy of security — the ponytail agent exists for this reason. Fewer components, fewer twists, fewer vulnerabilities. |
+| 5 | **Separation of duties** | No single actor releases code: designer ≠ checker. The agent that writes code never signs its own commit — bridge validates, gitdevops commits (see mcpbridge \`contracts/release-signoff.md\`). |
+| 6 | **Open design** | No security by obscurity. Kerckhoffs's principle: the only secret is the key/credential (in env vars), never the mechanism. Document how auth works; hide only secrets. |
+| 7 | **Segmentation** | Isolate blast radius: per-agent vaults + ACL, feature folders, separate DB users per service, network segmentation in deployment. A fire in one unit must not burn the building. |
+| 8 | **Usability (human factors)** | Security that's too hard to use gets bypassed (the password sticky note). Prefer SSO/managed secrets over 32-char rotate-monthly rules; make the secure path the easy path. |
+| 9 | **Minimize attack surface** | Fewer external interfaces, no unneeded remote access, fewer components. Every route, port, and dependency added is target area. |
+| 10 | **Secure by default** | Out of the box: only required features on, no default passwords (must-supply at setup), no default admin IDs, deny-first CORS/firewall rules. |
+
+Rule of use: when reviewing a design or a diff, name the principle a finding violates —
+it makes the risk explainable to non-engineers (see the Challenger lesson in the
+release sign-off note).
+`);
+
 log.ok('gitdevops vault seeded');
 
 // ─── MCP Bridge vault ─────────────────────────────────────────────────────────
@@ -1626,6 +1691,39 @@ async function request(endpoint, opts = {}) {
 
 module.exports = { request };
 \`\`\`
+`);
+
+writeNote('mcpbridge', 'contracts/release-signoff.md', `# Release Sign-off Discipline
+
+Borrowed from aerospace design engineering: a drawing is never released by the person
+who drew it. It passes designer → independent checker → stress engineer → manufacturing
+engineer → certified releaser, and each signature means "I verified this against MY
+discipline", not "someone upstream probably checked".
+
+## The pipeline's sign-off chain
+| Aerospace role | Pipeline equivalent | Verifies |
+|----------------|--------------------|----------|
+| Designer | domain agents | the change itself |
+| Checker | ponytail | standards, over-engineering |
+| Stress engineer | mcpbridge | the loads: cross-domain contracts hold |
+| Manufacturing | testing | it can actually be exercised (collection runs) |
+| Certified releaser | gitdevops | security scan, then — and only then — commit |
+
+## The Challenger lessons (engineering ethics)
+1. **A known risk, poorly explained, is a sign-off failure.** The O-ring engineers were
+   right and presented numbers; management heard "acceptable risk". Feynman's ice-water
+   demo — the rubber-band explanation — is the standard: every blocking violation must
+   state a concrete failure scenario in plain language ("this binding calls a route that
+   does not exist; the page will render and every save will silently fail"), not just a
+   rule name and a count.
+2. **Never sign under schedule pressure.** Deadlines and sponsor pressure do not change
+   physics. If validation fails, the pipeline stops — there is no force-override on the
+   bridge or the security scan by design (fail safe).
+3. **A fail-safe that already fired is a stop, not a margin.** The second O-ring was a
+   backup, and it was already eroding on prior flights. A warning-severity violation
+   recurring across sessions gets escalated to blocking, not tolerated as normal.
+4. **Traceability.** Every release decision is recorded (decisions table, scan-results,
+   contract notes) so the next session can see what was known and when.
 `);
 
 log.ok('mcpbridge vault seeded');
@@ -2335,6 +2433,175 @@ Anything touching the areas above belongs in \`skippedSuggestions\`, not in the 
 
 log.ok('ponytail vault seeded');
 
+// ─── Requirements vault ───────────────────────────────────────────────────────
+writeNote('requirements', 'specs/spec-template.md', `# Specification Template
+
+Spec-driven development: the intent behind a task is turned into a specification a model
+can read and follow, BEFORE any domain agent writes code. Big ambiguous asks
+("build me an e-commerce platform") are full of unstated decisions — payments, auth,
+shipping. The spec surfaces those decisions explicitly so they are made once, up front,
+not improvised mid-generation across thousands of unread lines.
+
+## Required sections
+\`\`\`markdown
+# Spec: <feature name>
+
+## Summary
+One paragraph: what we are building and why.
+
+## In scope
+- Bullet list of concrete capabilities this session WILL deliver.
+
+## Out of scope
+- Explicitly excluded items (prevents scope creep inside code generation).
+
+## Decisions
+| Topic | Decision | Rationale |
+|-------|----------|-----------|
+| e.g. auth | JWT bearer | matches existing backend middleware |
+
+## Open questions
+- Anything that could not be decided from available signals. These go back to the
+  user — never silently guessed at inside a domain agent.
+
+## User stories
+See linked story files.
+\`\`\`
+
+## Rules
+- Every decision that a domain agent would otherwise have to guess MUST appear in
+  the Decisions table.
+- Keep tasks small and well-defined — one story maps to a handful of routes/components,
+  never "the whole system".
+- Out-of-scope is as important as in-scope.
+`);
+
+writeNote('requirements', 'user-stories/story-format.md', `# User Story Format
+
+\`\`\`markdown
+## <STORY-ID>: <title>
+**As a** <role>
+**I want** <capability>
+**So that** <benefit>
+
+### Acceptance criteria
+- [ ] Given <context>, when <action>, then <observable outcome>
+- [ ] ...
+
+**Priority:** must | should | could
+\`\`\`
+
+## Rules
+- Acceptance criteria must be testable — the testing agent generates test cases and
+  test data directly from them.
+- Each criterion is a Given/When/Then with an observable outcome (a status code, a
+  visible UI state, a row in a table) — never "works correctly".
+- A story too big to describe in 5 criteria gets split.
+`);
+
+writeNote('requirements', 'signals/signal-synthesis.md', `# Signal Synthesis
+
+Requirements are derived from signals, not only from the raw task text. Before drafting
+the spec, gather and synthesize every available source:
+
+| Source | Where to look | What it yields |
+|--------|--------------|----------------|
+| task-text | the user's request | primary intent |
+| sre-feedback | \`agents/sre/vault/diagnostics/\` + sre decisions | what failed in production last cycle |
+| logs / bug-reports | project's logs, issue tracker exports in the repo | root causes, real failure modes |
+| user-feedback | surveys, reviews, support exports found in the project | behaviour bottlenecks, usage patterns |
+| codebase | onboarding summary | current architecture and constraints |
+
+## Root-cause discipline
+When a signal is a symptom ("checkout is slow"), record symptom → cause → evidence.
+A spec item addressing a symptom without a cause is a guess — flag it as an open question.
+`);
+
+log.ok('requirements vault seeded');
+
+// ─── SRE vault ────────────────────────────────────────────────────────────────
+writeNote('sre', 'runbooks/root-cause-analysis.md', `# Root-Cause Analysis Runbook
+
+Given logs, stack traces, or bug reports, diagnose — don't just describe.
+
+## Method
+1. **Symptom**: the observable failure (error message, status code, user report).
+2. **Trace**: follow the stack trace / log timeline to the first point where state went wrong.
+3. **Root cause**: the code or config decision that allowed it — not the line that threw.
+4. **Evidence**: the exact log lines / trace frames supporting the diagnosis.
+5. **Suggested fix**: smallest change that removes the cause (not the symptom).
+
+## Severity
+- **critical** — data loss, security exposure, total outage
+- **major** — a feature is broken for a class of users
+- **minor** — degraded UX, noisy logs, slow path
+
+Every diagnostic feeds back into the next requirements cycle via \`feedback[]\`.
+`);
+
+writeNote('sre', 'metrics/outcome-metrics.md', `# Outcome Metrics — measure outcomes, not lines of code
+
+Lines of code generated is NOT a success metric. Per session, report:
+
+| Metric | Source |
+|--------|--------|
+| filesChangedCount | union of all domain \`filesChanged[]\` |
+| routesAdded | \`BackendOutput.routes[]\` length |
+| testCoveragePercent | \`TestingOutput.coverage.percentCovered\` |
+| contractViolations | \`MCPBridgeOutput.contractValidation.violations[]\` length |
+| securityBlocks | gitdevops \`blockedBy[]\` length |
+| simplificationsApplied | \`PonytailOutput.metrics.simplificationsApplied\` |
+
+Trends across sessions (query the decisions table) matter more than any single value:
+are contract violations going down? Is coverage staying at 100%? Is ponytail finding
+less over-engineering over time?
+`);
+
+writeNote('sre', 'runbooks/iac-review.md', `# Infrastructure-as-Code Review
+
+When the session touched deployment artifacts (Dockerfile, compose, Kubernetes YAML,
+Ansible, CI pipelines), verify:
+
+- No secrets or credentials inline — env/secret references only.
+- Images pinned to versions, not \`latest\`.
+- Health checks / readiness probes declared.
+- Resource limits set for containers.
+- Migrations run before the service starts, never during requests.
+
+Record each artifact in \`iacArtifacts[]\`. Do not create infrastructure the task didn't
+ask for — report gaps as feedback instead.
+`);
+
+writeNote('sre', 'runbooks/model-drift-monitoring.md', `# Model Drift Monitoring & Retirement
+
+When a session ships AI features (\`BackendOutput.aiAgents[]\` is non-empty), the operate
+phase owns the tail of the AI model lifecycle: monitor → retrain → retire.
+
+## Drift
+Drift is when a model stops performing the way it once did — inputs shift, the world
+changes, quality decays silently. Watch for it routinely, not reactively:
+- Compare guardrail-refusal rates and schema-validation failure rates across sessions
+  (rising failures in the validation loop = drift signal).
+- Check fairness didn't decay: outputs stay balanced across the groups checked at
+  evaluation time.
+
+## Performance metrics
+Throughput, latency, and error rates for every AI-backed route — these belong in the
+same outcome-metrics report as the rest of the session, and trends matter more than
+single values.
+
+## Retraining
+Plan for periodic retraining as feedback: recommend automated alerts + a retraining
+pipeline trigger when drift signals cross a threshold. This is a \`feedback[]\` item for
+requirements — the pipeline never retrains anything itself.
+
+## Retirement
+A model no longer needed is archived (prompt, schema, eval results, decision history),
+never just deleted — it can be built from later. Record the retirement as a decision.
+`);
+
+log.ok('sre vault seeded');
+
 // ─── Connected knowledge graph (Obsidian [[wikilinks]]) ───────────────────────
 // A home note per agent + sub-agent stubs, cross-linked along the contract flow,
 // plus an orchestrator hub linking to everything. Open the `agents/` folder as
@@ -2343,6 +2610,16 @@ const link = (a) => `[[${a}]]`;
 const links = (arr) => (arr.length ? arr.map(link).join(' · ') : '— none');
 
 const GRAPH = {
+  requirements: {
+    title: 'Requirements Agent',
+    role: 'Spec-driven front of the lifecycle — synthesizes signals (task text, logs, bug reports, user feedback, SRE diagnostics) into user stories and a specification every domain agent follows.',
+    upstream: ['sre'], downstream: ['database', 'backend', 'frontend', 'testing', 'calls'], validators: ['mcpbridge'],
+    subAgents: [
+      ['signal-analyst', 'Gathers and synthesizes unstructured signals: prior SRE feedback, logs, bug reports, user feedback, onboarding context.', 'story-writer'],
+      ['story-writer', 'Turns synthesized intent into small, testable user stories with Given/When/Then acceptance criteria.', 'spec-author'],
+      ['spec-author', 'Writes the specification: scope, out-of-scope, explicit decisions, open questions, and a per-domain task breakdown.', null],
+    ],
+  },
   database: {
     title: 'Database Agent',
     role: 'Designs tables and migrations, validates schema, optimizes queries.',
@@ -2412,7 +2689,17 @@ const GRAPH = {
   gitdevops: {
     title: 'Git / DevOps Agent',
     role: 'Runs the security scan, creates the branch, writes the commit.',
-    upstream: ['mcpbridge'], downstream: [], validators: [], subAgents: [],
+    upstream: ['mcpbridge'], downstream: ['sre'], validators: [], subAgents: [],
+  },
+  sre: {
+    title: 'SRE Agent',
+    role: 'Operate phase — post-session health checks, log/root-cause diagnostics, IaC review, and outcome metrics (system health, coverage, violations — never lines of code). Its feedback closes the loop into the next requirements cycle.',
+    upstream: ['gitdevops'], downstream: ['requirements'], validators: [],
+    subAgents: [
+      ['log-analyst', 'Reads session outputs, project logs, and stack traces for failure signals.', 'incident-diagnostician'],
+      ['incident-diagnostician', 'Turns symptoms into root causes with evidence and a suggested fix.', 'metrics-reporter'],
+      ['metrics-reporter', 'Computes outcome metrics for the session and writes feedback for the next requirements cycle.', null],
+    ],
   },
 };
 
@@ -2462,7 +2749,7 @@ writeNote('orchestrator', 'orchestrator.md', [
   'The top-level coordinator. Routes each task through the domain agents in dependency order and passes typed JSON contracts between them.',
   '',
   '## Dependency order',
-  `${link('database')} → ${link('backend')} → ( ${link('frontend')} · ${link('testing')} · ${link('calls')} ) → ${link('ponytail')} → ${link('mcpbridge')} → ${link('gitdevops')}`,
+  `${link('requirements')} → ${link('database')} → ${link('backend')} → ( ${link('frontend')} · ${link('testing')} · ${link('calls')} ) → ${link('ponytail')} → ${link('mcpbridge')} → ${link('gitdevops')} → ${link('sre')} ⤳ back to ${link('requirements')}`,
   '',
   '## Domain agents',
   DOMAINS.map(link).join(' · '),
@@ -2479,24 +2766,27 @@ writeNote('orchestrator', 'routing/dependency-order.md', [
   '',
   '| Step | Agent | Consumes | Produces |',
   '|------|-------|----------|----------|',
-  `| 1 | ${link('database')} | task | DatabaseOutput |`,
-  `| 2 | ${link('backend')} | DatabaseOutput | BackendOutput |`,
-  `| 3a | ${link('frontend')} | BackendOutput | FrontendOutput |`,
-  `| 3b | ${link('testing')} | BackendOutput | Postman collection |`,
-  `| 3c | ${link('calls')} | BackendOutput, DatabaseOutput | CallsOutput |`,
+  `| 0 | ${link('requirements')} | task + signals + prior SRE feedback | RequirementsOutput (user stories + spec) |`,
+  `| 1 | ${link('database')} | RequirementsOutput | DatabaseOutput |`,
+  `| 2 | ${link('backend')} | RequirementsOutput, DatabaseOutput | BackendOutput |`,
+  `| 3a | ${link('frontend')} | RequirementsOutput, BackendOutput | FrontendOutput |`,
+  `| 3b | ${link('testing')} | RequirementsOutput, BackendOutput | Postman collection |`,
+  `| 3c | ${link('calls')} | RequirementsOutput, BackendOutput, DatabaseOutput | CallsOutput |`,
   `| 4 | ${link('ponytail')} | code outputs | simplified files + review |`,
   `| 5 | ${link('mcpbridge')} | all outputs | contract validation |`,
   `| 6 | ${link('gitdevops')} | validated outputs | branch + commit |`,
+  `| 7 | ${link('sre')} | all outputs + project logs | diagnostics + outcome metrics + feedback |`,
   '',
   'Steps 3a–3c run in parallel. Ponytail (step 4) trims the generated code before the',
-  'bridge re-validates contracts. The commit only happens if step 5 passes.',
+  'bridge re-validates contracts. The commit only happens if step 5 passes. SRE (step 7)',
+  'is advisory — it never blocks — and its feedback is read by requirements next session.',
   '',
 ].join('\n'));
 
 log.ok('knowledge graph seeded (home notes, sub-agents, orchestrator)');
 
 // ─── Update all INDEX.md files ────────────────────────────────────────────────
-const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls', 'ponytail', 'orchestrator'];
+const AGENT_NAMES = ['backend', 'frontend', 'database', 'testing', 'gitdevops', 'mcpbridge', 'calls', 'ponytail', 'requirements', 'sre', 'orchestrator'];
 AGENT_NAMES.forEach(name => {
   updateIndexMd(name);
   log.ok(`${name} vault/INDEX.md updated`);

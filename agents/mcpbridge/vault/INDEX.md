@@ -2,5 +2,6 @@
 
 | File | Topics | Last Updated |
 |------|--------|--------------|
-| [mcpbridge.md](mcpbridge.md) | | 2026-06-29 |
-| [templates/api-stub-template.md](templates/api-stub-template.md) | | 2026-06-29 |
+| [contracts/release-signoff.md](contracts/release-signoff.md) | | 2026-07-02 |
+| [mcpbridge.md](mcpbridge.md) | | 2026-07-02 |
+| [templates/api-stub-template.md](templates/api-stub-template.md) | | 2026-07-02 |
