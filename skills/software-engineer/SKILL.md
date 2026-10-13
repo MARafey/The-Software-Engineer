@@ -69,6 +69,11 @@ npm install --silent && node init/bootstrap.js && node init/seed-vaults.js && no
 | `/software-engineer update` | Pull latest version — go to the Update section |
 | `/software-engineer onboard` | Force re-scan of current project — go to the Onboard section |
 | `/software-engineer graph` | Build a filtered code knowledge graph of the current project — go to the Graph section |
+| `/software-engineer docs [idea]` | Set up System Docs (the project's source of truth in `docs/system/`) — go to the Docs section |
+| `/software-engineer answer [module]` | Walk through open System Docs questions in chat — go to the Answer section |
+| `/software-engineer approve <module\|layers>` | Approve a module doc (or the layer plan) so coding can start — go to the Answer section |
+| `/software-engineer team` | Map git emails to names — go to the Team section |
+| `/software-engineer uitest [full] [module...] [--workers N]` | UI testing of changed and linked flows (never automatic) — go to the UI test section |
 | `/software-engineer help` | Print usage — go to the Help section |
 
 ---
@@ -329,6 +334,66 @@ After the workflow completes, summarise clearly:
 - **Security:** any issues found (or "all clear")
 - **Contract check:** whether frontend/backend/database were consistent
 - If anything was **blocked** (contract violation, security issue): explain in plain language what failed and what the user should do to fix it
+- **System Docs** (when `systemDocs` is set): which module docs were updated and which other owners are affected
+
+**If the result has `status: "awaiting-answers"`**, nothing was coded: the project's System Docs need decisions first. Explain the `chainReaction` and the affected `consumers` in plain language, then follow the Answer section for every target module in `blocking`. When every target passes `gate`, re-run Step 5 with the same task.
+
+---
+
+## Subcommand: docs (System Docs setup)
+
+System Docs keep a per-module source of truth in the project's `docs/system/` (committed, shared with the team): flows, APIs, data, who-depends-on-what, and every decision. Once set up, every `/software-engineer <task>` checks impact on linked modules, stops for answers when a module's doc isn't approved, and updates the docs after coding. Design: `<install-path>/design/system-docs.md`.
+
+Let `CLI` be `node <install-path>/shared/lib/sysdocs.js`.
+
+1. **New or empty project:** take the idea from the arguments (or ask for it), then run
+   ```javascript
+   Workflow({ scriptPath: `<install-path>/.claude/workflows/sysdocs.js`,
+     args: { mode: "plan", idea: "<idea>", projectPath: "<cwd>", agentsDir: "<install-path>", owner: "<user's name from team.md, if known>" } })
+   ```
+   Then show `docs/system/layers.md` and ask the user to approve it (`CLI approve <cwd> layers <name>`), and go to the Answer section.
+2. **Existing code:** ask how they want to use it:
+   - **Incremental** (default, cheapest): just run `CLI init <cwd>`; each future task documents only the modules it touches.
+   - **Full**: run the same workflow with `mode: "bootstrap"`.
+   - **Selected**: `mode: "bootstrap"` with `modules: [<the names they pick>]`.
+3. Run the Team section once so commits map to real names.
+
+## Subcommand: answer / approve (System Docs questions)
+
+1. `CLI questions <cwd> [module]` lists open and conflicting questions (with a module, also its shelved ones).
+2. Ask them **in chat**, one module at a time, showing for each: the question, the chain reaction, the technical example, the plain-language example, the data example and the options (recommended first). Use AskUserQuestion when the options fit; otherwise ask in prose.
+3. Record each reply: `CLI answer <cwd> <qid> "<name>" "<answer>"`. If they aren't sure yet: `CLI defer <cwd> <qid> "<name>"` (shelved: it comes back when that module is next built or touched). If the result says `conflict`, show both answers and record the one they choose with `--final`.
+4. Teammates may also answer by editing `questions.md` directly; `CLI index <cwd>` picks those up.
+5. When a module has no open, conflicting or shelved questions, ask the user to approve it: `CLI approve <cwd> <module> "<name>"`. Anyone on the team may approve.
+
+## Subcommand: uitest (UI testing, always confirmed first)
+
+Functional UI testing from the project's System Docs: generated Playwright specs walk each flow as each role, try the documented input variants, run multi-user scenarios and compare the UI with the database (read-only). It never runs automatically and never starts without the user's yes. Design: `<install-path>/design/ui-testing.md`. Requires System Docs (`docs/system/`); if missing, offer the Docs section first.
+
+Let `UI` be `node <install-path>/shared/lib/uitest.js`.
+
+1. **Scope:** `UI scope <cwd>` (add `--full` for `full`, `--modules=a,b` for named modules). If `skip` is true, tell the user why (e.g. "only style or text files changed") and stop; offer `uitest full`.
+2. **Environment:** `UI env <cwd>`.
+3. **Confirm:** show the user, in plain language:
+   - what will be tested: `scope.mode`, `scope.reason`, modules, and the flows split into "new or changed specs" and "reused specs"
+   - installs that will run (`env.installs`, e.g. the Playwright browser download)
+   - that the app will be started on spare ports with a throwaway test database (their running services and data are not touched)
+   - parallel workers (`env.workers`, or `--workers N`)
+   - the token estimate (`scope.estimate.totalTokens`, noting whether it is measured or a default)
+
+   Ask with AskUserQuestion: "Start UI testing now?" with options Start / Cancel. Stop unless they choose Start.
+4. **Run** (only after Start):
+   ```javascript
+   Workflow({ scriptPath: `<install-path>/.claude/workflows/uitest.js`,
+     args: { confirmed: true, projectPath: "<cwd>", agentsDir: "<install-path>", date: "<today YYYY-MM-DD>",
+             scope: <scope JSON>, env: <env JSON>, workers: <N or omit> } })
+   ```
+   Tell the user it is running in the background and what it is doing.
+5. **Report:** summarise `passed/total`. For each bug, show what went wrong, the intended result, what was got, how to fix, and its ready-to-run fix command; offer to run any of them. List tests that need updating separately, and any System Docs questions raised (offer the Answer section).
+
+## Subcommand: team
+
+Run `CLI team <cwd>`. For every email under `unknown`, ask the user for the person's name and role, then `CLI team-add <cwd> <email> "<name>" "<role>"`. The mapping lives in `docs/system/team.md`, so teammates see and reuse it.
 
 ---
 
@@ -438,6 +503,11 @@ Show:
 /software-engineer update     — Pull latest version
 /software-engineer onboard    — Re-scan current project
 /software-engineer graph      — Build a filtered code knowledge graph (Obsidian)
+/software-engineer docs       — Set up System Docs: the project's per-module source of truth
+/software-engineer answer     — Answer open System Docs questions
+/software-engineer approve    — Approve a module doc (or the layer plan) so coding can start
+/software-engineer team       — Map git emails to names
+/software-engineer uitest     — UI-test changed and linked flows (asks before starting)
 /software-engineer help       — Show this
 
 Examples:
