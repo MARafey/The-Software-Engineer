@@ -2,10 +2,8 @@ export const meta = {
   name: 'ponytail',
   description: 'Lazy-senior-dev refinement gate — reviews this session\'s generated code against the minimal-code decision ladder and applies safe simplifications before the bridge. The best code is the code you never wrote.',
   phases: [
-    { title: 'Load Ladder', detail: 'Read the decision ladder, modes, and never-simplify rules' },
     { title: 'Review', detail: 'Score each changed file for over-engineering against the ladder' },
     { title: 'Simplify', detail: 'Apply behavior-preserving simplifications (mode-gated)' },
-    { title: 'Persist', detail: 'Write review note and log the agent run' },
   ],
 }
 
@@ -20,18 +18,32 @@ const AGENTS_DIR     = (args && args.agentsDir) || 'C:/Users/Hp/Desktop/Ideas/Ag
 const sessionId      = (args && args.sessionId)      || 'no-session'
 const taskText       = (args && args.taskText)       || ''
 const projectPath    = (args && args.projectPath)    || ''
+
+// One entry per file: agents report the same file more than once (created, then fixed) and in
+// mixed absolute/relative or slash styles, which inflated counts and repeated scan/review work.
+function uniquePaths(list) {
+  const root = String(projectPath || '').replace(/\\/g, '/').replace(/\/+$/, '')
+  const seen = new Map()
+  for (const raw of list) {
+    if (!raw) continue
+    let p = String(raw).replace(/\\/g, '/').replace(/^\.\//, '')
+    if (root && p.toLowerCase().startsWith(root.toLowerCase() + '/')) p = p.slice(root.length + 1)
+    if (!seen.has(p)) seen.set(p, p)
+  }
+  return [...seen.values()]
+}
 const mode           = (args && args.mode)           || 'full'   // lite | full | ultra
 const backendOutput  = (args && args.backendOutput)  || null
 const frontendOutput = (args && args.frontendOutput) || null
 const callsOutput    = (args && args.callsOutput)    || null
 const databaseOutput = (args && args.databaseOutput) || null
 
-const filesChanged = [
+const filesChanged = uniquePaths([
   ...((backendOutput  && backendOutput.filesChanged)  || []),
   ...((frontendOutput && frontendOutput.filesChanged) || []),
   ...((callsOutput    && callsOutput.filesChanged)    || []),
   ...((databaseOutput && databaseOutput.migrationFile) ? [databaseOutput.migrationFile] : []),
-]
+])
 
 // Nothing was generated this session — nothing to simplify.
 if (filesChanged.length === 0) {
@@ -49,29 +61,20 @@ if (filesChanged.length === 0) {
   }
 }
 
-// ─── Phase: Load Ladder ───────────────────────────────────────────────────────
-phase('Load Ladder')
+// Bookkeeping is returned as data (persistOps) and run by shared/lib/persist.js
+// (design/agent-consolidation.md): orchestrate defers it to the skill; a direct run uses one agent.
+async function flushPersist(ops) {
+  if (!ops.length || (args && args.deferPersist)) return
+  const opsFile = `${AGENTS_DIR}/agents/orchestrator/vault/sessions/${sessionId}.ponytail.persist.json`
+  await agent(
+    `This is the software-engineer pipeline's own bookkeeping step for the session the user started: it records the ` +
+    `session's results (decisions, vault notes, session status) in the pipeline's knowledge base under ${AGENTS_DIR}/agents. ` +
+    `Every pipeline run ends with it. Write this JSON array exactly, with the Write tool, to ${opsFile}:\n${JSON.stringify(ops)}\n\n` +
+    `Then run: node "${AGENTS_DIR}/shared/lib/persist.js" "${opsFile}" and return its output.`,
+    { label: 'persist', model: 'haiku', effort: 'low' }
+  )
+}
 
-const ladder = await agent(
-  `Load context for the Ponytail Agent (the "laziest senior dev in the room").\n\n` +
-  `Read these notes from your knowledge base:\n` +
-  `1. ${AGENTS_DIR}/agents/ponytail/vault/philosophy/decision-ladder.md\n` +
-  `2. ${AGENTS_DIR}/agents/ponytail/vault/philosophy/modes.md\n` +
-  `3. ${AGENTS_DIR}/agents/ponytail/vault/philosophy/never-simplify.md\n\n` +
-  `Return: { ladder: "<text of decision-ladder.md>", neverSimplify: "<text of never-simplify.md>" }`,
-  {
-    label: 'load-ladder',
-    model: 'haiku',
-    schema: {
-      type: 'object',
-      required: ['ladder'],
-      properties: {
-        ladder:        { type: 'string' },
-        neverSimplify: { type: 'string' },
-      },
-    },
-  }
-)
 
 // ─── Phase: Review ────────────────────────────────────────────────────────────
 phase('Review')
@@ -83,8 +86,8 @@ const review = await agent(
   `Task that produced this code: "${taskText}"\n` +
   `Project: ${projectPath}\n` +
   `Files generated/changed this session (review ONLY these):\n${JSON.stringify(filesChanged, null, 2)}\n\n` +
-  `Decision ladder to judge against:\n${ladder.ladder || 'reuse > stdlib > native > installed dep > one-liner > minimal code'}\n\n` +
-  `NEVER flag these for simplification:\n${ladder.neverSimplify || 'input validation, error handling, security, accessibility, or explicitly requested features'}\n\n` +
+  `Decision ladder to judge against: read ${AGENTS_DIR}/agents/ponytail/vault/philosophy/decision-ladder.md and modes.md (if missing: reuse > stdlib > native > installed dep > one-liner > minimal code)\n\n` +
+  `NEVER flag what ${AGENTS_DIR}/agents/ponytail/vault/philosophy/never-simplify.md protects (if missing: input validation, error handling, security, accessibility, or explicitly requested features)\n\n` +
   `Read each changed file in ${projectPath} and judge it against the ladder. Look for:\n` +
   `- Speculative code / abstractions nobody asked for (YAGNI)\n` +
   `- Hand-rolled code that duplicates the stdlib, a native platform feature, or an already-installed dependency\n` +
@@ -199,9 +202,6 @@ if (mode === 'lite') {
   log(`Applied ${applied.length} simplification(s) — ~${estimatedLinesRemoved} line(s) removed`)
 }
 
-// ─── Phase: Persist ───────────────────────────────────────────────────────────
-phase('Persist')
-
 const reportLines = [
   `# Ponytail Review — Session ${sessionId}`,
   '',
@@ -225,20 +225,16 @@ const reportLines = [
   '',
 ].join('\n')
 
-await agent(
-  `Persist the Ponytail review for session ${sessionId}.\n\n` +
-  `1. Write this review note to: ${AGENTS_DIR}/agents/ponytail/vault/reviews/${sessionId}.md\n\n` +
-  `${reportLines}\n\n` +
-  `2. Log the agent run:\n` +
-  `cd "${AGENTS_DIR}" && node shared/lib/db-cli.js log-agent-run "${sessionId}" "ponytail" "completed" ` +
-  `'{"mode":"${mode}","applied":${applied.length},"linesRemoved":${estimatedLinesRemoved}}'\n\n` +
-  `Return "done".`,
-  { label: 'persist-review', model: 'haiku' }
-)
+const persistOps = [
+  { write: `agents/ponytail/vault/reviews/${sessionId}.md`, content: reportLines },
+  { db: ['log-agent-run', sessionId, 'ponytail', 'completed', JSON.stringify({ mode, applied: applied.length, linesRemoved: estimatedLinesRemoved })] },
+]
+await flushPersist(persistOps)
 
 return {
   sessionId,
   agentName:          'ponytail',
+  persistOps,
   status:             'completed',
   mode,
   filesReviewed:      filesChanged,

@@ -28,6 +28,8 @@ Deployment references: `deployment/docker.md`, `deployment/server-hardening.md`,
 
 ## Pre-commit security scan (blocking)
 
+The scan is run by `node shared/lib/scan.js <project> <changed paths>`, which implements the checklist exactly and prints { passed, securityFlags, blockingFailures }. Its result is final: never edit code to make it pass, never commit when it fails; explain each blocking failure in plain language instead.
+
 Run all checks against `git diff --staged` in the target project directory:
 
 | # | Severity | What to check |
@@ -97,6 +99,8 @@ Return a `GitDevOpsOutput` object conforming to `shared/contracts/gitdevops.sche
 `blockedBy[]` lists check names that prevented the commit (empty if commit succeeded).
 
 ## Session close protocol
+
+When run by the workflows, these steps are carried out by the workflow itself (its persistOps, run by `shared/lib/persist.js`). Do not run them from inside a sub-agent; only do them by hand outside the workflows.
 
 1. Save scan results: write to `agents/gitdevops/vault/security-scans/scan-results/<sessionId>.md`
 2. Log agent run: `node ~/.agents/shared/lib/db-cli.js log-agent-run <sessionId> gitdevops <status> '<outputJson>'`

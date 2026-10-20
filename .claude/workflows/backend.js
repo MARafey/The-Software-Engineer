@@ -2,7 +2,6 @@ export const meta = {
   name: 'backend',
   description: 'Backend domain agent — routes, controllers, services, code standards, folder structure',
   phases: [
-    { title: 'Load Context', detail: 'Read vault notes and prior decisions' },
     { title: 'Plan', detail: 'flow-planner designs business logic flow' },
     { title: 'Data Architecture', detail: 'data-architect: single shared pool, AI-query discipline, caching' },
     { title: 'Build', detail: 'route-creator generates code files' },
@@ -15,6 +14,20 @@ const AGENTS_DIR      = (args && args.agentsDir) || 'C:/Users/Hp/Desktop/Ideas/A
 const sessionId       = (args && args.sessionId)       || 'no-session'
 const taskText        = (args && args.taskText)        || ''
 const projectPath     = (args && args.projectPath)     || ''
+
+// One entry per file: agents report the same file more than once (created, then fixed) and in
+// mixed absolute/relative or slash styles, which inflated counts and repeated scan/review work.
+function uniquePaths(list) {
+  const root = String(projectPath || '').replace(/\\/g, '/').replace(/\/+$/, '')
+  const seen = new Map()
+  for (const raw of list) {
+    if (!raw) continue
+    let p = String(raw).replace(/\\/g, '/').replace(/^\.\//, '')
+    if (root && p.toLowerCase().startsWith(root.toLowerCase() + '/')) p = p.slice(root.length + 1)
+    if (!seen.has(p)) seen.set(p, p)
+  }
+  return [...seen.values()]
+}
 const databaseOutput  = (args && args.databaseOutput)  || null
 const archPreferences = (args && args.archPreferences) || null
 
@@ -25,29 +38,20 @@ const archBrief = archPreferences ? [
   archPreferences.apiVersioning   ? `API path prefix: /api/${archPreferences.apiVersioning}/` : null,
 ].filter(Boolean).join('. ') : 'Follow the existing project conventions.'
 
-// ─── Phase: Load Context ─────────────────────────────────────────────────────
-phase('Load Context')
+// Bookkeeping is returned as data (persistOps) and run by shared/lib/persist.js
+// (design/agent-consolidation.md): orchestrate defers it to the skill; a direct run uses one agent.
+async function flushPersist(ops) {
+  if (!ops.length || (args && args.deferPersist)) return
+  const opsFile = `${AGENTS_DIR}/agents/orchestrator/vault/sessions/${sessionId}.backend.persist.json`
+  await agent(
+    `This is the software-engineer pipeline's own bookkeeping step for the session the user started: it records the ` +
+    `session's results (decisions, vault notes, session status) in the pipeline's knowledge base under ${AGENTS_DIR}/agents. ` +
+    `Every pipeline run ends with it. Write this JSON array exactly, with the Write tool, to ${opsFile}:\n${JSON.stringify(ops)}\n\n` +
+    `Then run: node "${AGENTS_DIR}/shared/lib/persist.js" "${opsFile}" and return its output.`,
+    { label: 'persist', model: 'haiku', effort: 'low' }
+  )
+}
 
-const context = await agent(
-  `Load context for the Backend Agent (session: ${sessionId}).\n\n` +
-  `Run:\ncd "${AGENTS_DIR}" && node shared/lib/db-cli.js --as backend get-decisions backend express-patterns 10\n\n` +
-  `Then read: ${AGENTS_DIR}/agents/backend/vault/INDEX.md\n` +
-  `Then read any relevant vault notes for the task: "${taskText}"\n\n` +
-  `Return JSON: { decisions: <array from command>, relevantNoteCount: <number> }`,
-  {
-    label: 'load-context',
-    schema: {
-      type: 'object',
-      required: ['decisions'],
-      properties: {
-        decisions:        { type: 'array' },
-        relevantNoteCount: { type: 'number' },
-      },
-    },
-  }
-)
-
-log(`Loaded ${context.decisions.length} decisions`)
 
 const tableContext = databaseOutput ? JSON.stringify(databaseOutput.tables || []) : '[]'
 
@@ -59,7 +63,7 @@ const plan = await agent(
   `Task: "${taskText}"\n` +
   `Project: ${projectPath}\n` +
   `Available database tables: ${tableContext}\n` +
-  `Prior backend decisions: ${JSON.stringify(context.decisions.slice(0, 5))}\n\n` +
+  `Prior backend decisions: run cd "${AGENTS_DIR}" && node shared/lib/db-cli.js --as backend get-decisions backend express-patterns 5, and read ${AGENTS_DIR}/agents/backend/vault/INDEX.md plus the notes it lists that are relevant to this task.\n\n` +
   `ARCHITECTURE PREFERENCES (from user clarification — follow these exactly):\n${archBrief}\n\n` +
   `Read the project at ${projectPath} to understand existing structure and conventions.\n\n` +
   `Design the business logic flow:\n` +
@@ -226,14 +230,10 @@ const structure = await agent(
 
 log(`Structure: created ${structure.createdFiles.length} missing file(s)`)
 
-// Persist state
-await agent(
-  `Save backend agent state. Run:\n` +
-  `cd "${AGENTS_DIR}" && node shared/lib/db-cli.js --as backend save-decision backend "${sessionId}" "express-patterns" ` +
-  `"Created ${build.routeContracts.length} routes for: ${taskText.slice(0,60).replace(/"/g,'')}" "Feature: ${plan.featureName}"\n\n` +
-  `Return "done".`,
-  { label: 'persist-state' }
-)
+const persistOps = [
+  { db: ['--as', 'backend', 'save-decision', 'backend', sessionId, 'express-patterns', `Created ${build.routeContracts.length} routes for: ${taskText.slice(0, 60)}`, `Feature: ${plan.featureName}`] },
+]
+await flushPersist(persistOps)
 
 const contractExports = build.routeContracts.map(r => ({
   routeMethod:   r.method,
@@ -243,16 +243,17 @@ const contractExports = build.routeContracts.map(r => ({
   authScheme:    r.authRequired ? 'bearer' : 'none',
 }))
 
-const allFiles = [
+const allFiles = uniquePaths([
   ...build.filesCreated,
   ...build.filesUpdated,
   ...standards.filesFixed,
   ...structure.createdFiles,
-]
+])
 
 return {
   sessionId,
   agentName:      'backend',
+  persistOps,
   status:         'completed',
   dataAccess,
   routes:         build.routeContracts,
