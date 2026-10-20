@@ -1528,7 +1528,7 @@ WIP                    ← not descriptive
 
 writeNote('gitdevops', 'security-scans/checklist.md', `# Security Scan Checklist
 
-Runs against \`git diff --staged\` before every commit.
+Runs before every commit, on the lines the session adds. Implemented exactly by \`shared/lib/scan.js\` (deterministic, no model, no override): change the script and its tests in \`tests/scan.test.js\` together with this table. Example env files (\`.env.example\` etc.), placeholder values and environment-variable reads are not treated as secrets; test and documentation files are exempt from the localhost check.
 
 | Severity | Check | Pattern |
 |----------|-------|---------|
@@ -2615,9 +2615,11 @@ const GRAPH = {
     role: 'Spec-driven front of the lifecycle — synthesizes signals (task text, logs, bug reports, user feedback, SRE diagnostics) into user stories and a specification every domain agent follows.',
     upstream: ['sre'], downstream: ['database', 'backend', 'frontend', 'testing', 'calls'], validators: ['mcpbridge'],
     subAgents: [
-      ['signal-analyst', 'Gathers and synthesizes unstructured signals: prior SRE feedback, logs, bug reports, user feedback, onboarding context.', 'story-writer'],
-      ['story-writer', 'Turns synthesized intent into small, testable user stories with Given/When/Then acceptance criteria.', 'spec-author'],
-      ['spec-author', 'Writes the specification: scope, out-of-scope, explicit decisions, open questions, and a per-domain task breakdown.', null],
+      ['spec-author', 'Gathers the signals, then writes the user stories, the specification and the per-domain tasks in one pass.', null],
+    ],
+    checklists: [
+      ['signal-analyst', 'Read only signals that exist: prior SRE feedback, logs, bug reports, user feedback, onboarding context; trace symptoms to root causes.'],
+      ['story-writer', 'Small, testable user stories with Given/When/Then acceptance criteria.'],
     ],
   },
   database: {
@@ -2625,39 +2627,55 @@ const GRAPH = {
     role: 'Designs tables and migrations, validates schema, optimizes queries.',
     upstream: [], downstream: ['backend', 'calls'], validators: ['mcpbridge'],
     subAgents: [
-      ['table-creator', 'Writes migration SQL for new/changed tables.', 'schema-validator'],
-      ['schema-validator', 'Checks foreign keys, constraints, and naming.', 'query-optimizer'],
-      ['query-optimizer', 'Adds indexes and flags N+1 / slow patterns.', null],
+      ['database-author', 'Designs tables and indexes and writes the complete migration file to the spec.', 'database-reviewer'],
+      ['database-reviewer', "Validates the migration against the spec and the checklists without the author's reasoning; fixes the file.", null],
+    ],
+    checklists: [
+      ['table-creator', 'CREATE TABLE IF NOT EXISTS, explicit foreign keys with ON DELETE behaviour, user preferences, migration filename format.'],
+      ['schema-validator', 'No nullable primary keys, snake_case names, consistent timestamp and UUID types, referential integrity.'],
+      ['query-optimizer', 'Indexes for WHERE/JOIN/ORDER BY columns on growing tables, inside the migration file; N+1 risks flagged.'],
     ],
   },
   backend: {
     title: 'Backend Agent',
     role: 'Builds routes, controllers, and services; declares the API contract.',
     upstream: ['database'], downstream: ['frontend', 'testing', 'calls'], validators: ['mcpbridge'],
+    // Split by independence (design/agent-consolidation.md): one author, one fresh reviewer; the old roles are checklists.
     subAgents: [
-      ['flow-planner', 'Maps the business-logic flow before any code.', 'data-architect'],
-      ['data-architect', 'Designs lean data access: one shared DB pool, read-only AI queries (LIMIT + time filters, no SELECT *), caching and lookup tables.', 'route-creator'],
-      ['route-creator', 'Generates route + controller + service files.', 'prompt-engineer'],
-      ['prompt-engineer', 'Designs AI micro-agents when the feature needs an LLM.', 'code-standards'],
-      ['code-standards', 'Audits JSDoc, error format, and comments.', 'folder-structure'],
-      ['folder-structure', 'Verifies the feature-folder layout and READMEs.', null],
+      ['backend-author', 'Plans the flow and data access, writes the code to the spec, and self-checks against the checklists.', 'backend-reviewer'],
+      ['backend-reviewer', "Reviews the changed files against the spec and the checklists without the author's reasoning; fixes violations.", null],
+    ],
+    checklists: [
+      ['flow-planner', 'Thin controllers, business logic in services, validation for every input, only the middleware the task needs.'],
+      ['data-architect', 'One shared DB pool, parameterized queries, no N+1 or SELECT *, read-only AI queries with LIMIT + time filters, caching and lookup tables.'],
+      ['route-creator', 'The route contract shape, with change and changeSummary on every route the session touched.'],
+      ['prompt-engineer', 'AI micro-agents (role, guardrail, rules, examples, strict schema, validation loop) when the feature has an LLM component.'],
+      ['code-standards', 'JSDoc, the error format, no stack traces or console.log in production paths, no bare catch blocks.'],
+      ['folder-structure', 'The feature-folder layout and its README.'],
     ],
   },
   frontend: {
     title: 'Frontend Agent',
     role: 'Builds components, wires API calls, enforces client security.',
     upstream: ['backend'], downstream: ['ponytail'], validators: ['mcpbridge'],
+    // Split by independence (design/agent-consolidation.md): the designer sets the vision without writing code,
+    // the author builds, a fresh reviewer judges and fixes. The old roles are checklists.
     subAgents: [
-      ['art-director', 'Sets the artistic vision before any layout: focal point, palette philosophy, composition & visual flow, signature detail, and the cohesion rules that bind every component into one piece. Designs with the eye of the masters (da Vinci, Bauhaus, Rams).', 'ui-designer'],
-      ['ui-designer', 'Defines layout and design-system usage, guided by the art direction.', '3d-designer'],
-      ['3d-designer', 'Architects Three.js/WebGL scenes (Opus model).', 'layout-architect'],
-      ['layout-architect', 'Owns parent-child CSS: Grid/Flex layout, container relationships, responsive structure.', 'positioning-specialist'],
-      ['positioning-specialist', 'Owns positioning, stacking/z-index, overflow and scroll containers.', 'contrast-specialist'],
-      ['contrast-specialist', 'Owns colour contrast and visual accessibility (WCAG AA+), focus states.', 'component-creator'],
-      ['component-creator', 'Builds the component files.', 'api-request-handler'],
-      ['api-request-handler', 'Wires components to backend contracts.', 'atelier-curator'],
-      ['atelier-curator', 'Judges the assembled UI as one composition — does every part merge into a unified masterpiece? Applies final refinements for rhythm, alignment, harmony, and cohesion.', 'security-checker'],
-      ['security-checker', 'Audits token placement, CSP, and storage.', null],
+      ['frontend-designer', 'Sets the art direction with the eye of the masters (focal point, palette, composition, signature detail, cohesion rules) and the UI design (views, layout, tokens, states). Writes no code.', '3d-designer'],
+      ['3d-designer', 'Architects Three.js/WebGL scenes (Opus model); runs only for 3D tasks.', 'frontend-author'],
+      ['frontend-author', 'Builds the components, API files, wiring and state to the design, the spec and the checklists.', 'frontend-reviewer'],
+      ['frontend-reviewer', "Judges the screen as one composition and checks contrast and security without the author's reasoning; fixes what it safely can.", null],
+    ],
+    checklists: [
+      ['art-director', 'North star, one focal point, palette philosophy, composition and visual flow, signature detail, cohesion rules, motion.', 'frontend-designer'],
+      ['ui-designer', 'Views, layout, design-system tokens, responsive behaviour, loading/empty/error states.', 'frontend-designer'],
+      ['layout-architect', 'Parent-child CSS: Grid/Flex layout, container relationships, responsive structure, min-width: 0 overflow guards.'],
+      ['positioning-specialist', 'Positioning, stacking contexts and the z-index scale, overflow and scroll containers, sticky/fixed elements, portals.'],
+      ['contrast-specialist', 'WCAG AA contrast across light/dark themes and visible focus states.'],
+      ['component-creator', 'Components import from api/ files only, use design tokens, and craft loading/empty/error states.'],
+      ['api-request-handler', 'Wire only declared or existing routes, the right storage layer for response data, stores updated.'],
+      ['atelier-curator', 'One voice across components, one focal point per view, one spacing rhythm, cohesion with the art direction.'],
+      ['security-checker', 'Bearer token placement, CSP, CORS, X-headers and storage sensitivity.'],
     ],
   },
   testing: {
@@ -2669,11 +2687,16 @@ const GRAPH = {
     title: 'Calls Agent',
     role: 'Builds inbound IVR / outbound campaigns, webhooks, voice scripts, compliance.',
     upstream: ['backend', 'database'], downstream: [], validators: ['mcpbridge'],
+    // Split by independence (design/agent-consolidation.md): one author, one independent compliance reviewer.
     subAgents: [
-      ['flow-designer', 'Maps the IVR tree (inbound) or campaign flow (outbound).', 'telephony-integrator'],
-      ['telephony-integrator', 'Writes webhook handlers and TwiML/NCCO.', 'voice-script-writer'],
-      ['voice-script-writer', 'Writes all TTS prompts.', 'compliance-checker'],
-      ['compliance-checker', 'Validates TCPA/GDPR/DNC and recording consent.', null],
+      ['calls-author', 'Designs the call flow, writes the telephony integration and the voice scripts to the spec and the checklists.', 'calls-compliance'],
+      ['calls-compliance', "Checks TCPA/GDPR/DNC and recording consent against the code and scripts, without the author's reasoning; fixes clear code gaps.", null],
+    ],
+    checklists: [
+      ['flow-designer', 'The IVR tree (inbound) or campaign flow (outbound) with states, transitions and fallbacks.'],
+      ['telephony-integrator', 'Webhook handlers, TwiML/NCCO, SDK integration, signature validation on every webhook.'],
+      ['voice-script-writer', 'Every TTS prompt (greeting, menu, hold, transfer, voicemail, error), written for speech.'],
+      ['compliance-checker', 'TCPA consent, GDPR data handling, DNC checks, calling hours, recording consent.'],
     ],
   },
   ponytail: {
@@ -2724,6 +2747,7 @@ for (const [name, g] of Object.entries(GRAPH)) {
     '',
     '## Internal pipeline (sub-agents)',
     pipeline,
+    ...(g.checklists && g.checklists.length ? ['', `**Checklists:** ${g.checklists.map((c) => link(c[0])).join(' · ')}`] : []),
     '',
     '## Knowledge',
     'Accumulated decisions and patterns live in this vault (see `INDEX.md`) and in `knowledge.db`.',
@@ -2738,6 +2762,20 @@ for (const [name, g] of Object.entries(GRAPH)) {
       '',
       `**Does:** ${role}`,
       `**Hands off to:** ${next ? link(next) : `returns results to ${link(name)}`}`,
+      '',
+    ].join('\n'));
+  }
+
+  // Old sub-agent roles that became checklists: applied by the given sub-agent (default: the first), verified by the last.
+  for (const [sub, role, by] of g.checklists || []) {
+    const applier = by || g.subAgents[0][0];
+    const verifier = g.subAgents[g.subAgents.length - 1][0];
+    writeNote(name, `sub-agents/${sub}.md`, [
+      `# ${sub}`,
+      '',
+      `Checklist of ${link(name)}: applied by ${link(applier)}${verifier !== applier ? `, verified by ${link(verifier)}` : ''}.`,
+      '',
+      `**Covers:** ${role}`,
       '',
     ].join('\n'));
   }
