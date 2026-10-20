@@ -489,6 +489,7 @@ const CONTRACTS = {
           routesCovered: { type: 'number' },
           totalRoutes: { type: 'number' },
           percentCovered: { type: 'number' },
+          needsSetup: { type: 'number' },
         },
       },
       errors: { type: 'array', items: { type: 'string' } },
@@ -756,6 +757,7 @@ const CONTRACTS = {
         properties: {
           filesChangedCount:   { type: 'number' },
           routesAdded:         { type: 'number' },
+          routesModified:      { type: 'number' },
           testCoveragePercent: { type: 'number' },
           contractViolations:  { type: 'number' },
           securityBlocks:      { type: 'number' },

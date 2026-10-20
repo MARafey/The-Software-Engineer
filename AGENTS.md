@@ -68,6 +68,7 @@ Dependency order (always enforced):
 - Frontend/testing/calls parallelize after backend: frontend needs `BackendOutput.contractExports[]`, testing needs `BackendOutput.routes[]`, calls needs the backend + database outputs.
 - **sre** runs last (operate phase, advisory — never blocks, never edits code): health checks, log/root-cause diagnostics, IaC review, and outcome metrics computed deterministically from the session contracts (coverage, violations, security blocks — never lines of code). Its `feedback[]` is saved as decisions the requirements agent reads next cycle, closing the lifecycle loop.
 - **ponytail** is the "lazy senior dev" refinement gate: after code generation it reviews the session's changed files against a minimal-code decision ladder and applies behavior-preserving simplifications (never touching validation/security/accessibility/requested features). It is **advisory — never blocks** — and runs before the bridge so contracts are re-validated on whatever it trimmed. Vendored from [ponytail](https://github.com/DietrichGebert/ponytail) (MIT).
+- **Task size** (change 5 of `design/agent-consolidation.md`): `classification.size` is `"small"` only when the user agreed to the short pipeline in the skill. `orchestrate.js` re-checks it (a `fix` or `chore` touching exactly one domain and, with System Docs, no consumers of what changes) and then skips requirements, ponytail and SRE; the bridge, the security scan and testing of changed routes always run. The result reports `size` and `skipped`. `verify` checks that every key the skill passes in its orchestrate example is read by `orchestrate.js`.
 - **mcpbridge** validates the cross-domain JSON contracts and gates the commit; **gitdevops** runs last and commits only if the bridge passes its 10-point security scan.
 
 Two communication layers — keep them distinct:
@@ -107,6 +108,6 @@ These run in the Claude Code **Workflow tool sandbox**, not plain Node:
 
 ## Privacy / git
 
-`.gitignore` keeps personal data local: all `knowledge.db`, `shared/orchestrator.db`, and runtime vault output (`vault/projects/`, testing collections/reports, bridge contracts, scan-results, orchestrator sessions). Only baseline seed vault notes ship to other users.
+`.gitignore` keeps personal data local: all `knowledge.db`, `shared/orchestrator.db`, and runtime vault output (`vault/projects/` including the project maps, `vault/decisions/`, session specs, ponytail reviews, SRE diagnostics, database schema notes, testing collections/reports, bridge contracts, scan-results, orchestrator sessions). Only baseline seed vault notes ship to other users.
 
 Windows/Git Bash caution: shell commands containing code-like tokens occasionally drop stray empty files (e.g. `Part`, `0)`, `f.severity`) into the repo root — check `git status` before `git add -A` so they aren't committed.
